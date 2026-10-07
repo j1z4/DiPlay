@@ -7,6 +7,7 @@ import com.shilapi.xcertplay.airplay.MicrophonePacketizer
 import java.io.Closeable
 import java.net.DatagramPacket
 import java.net.DatagramSocket
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.TargetDataLine
@@ -14,37 +15,40 @@ import javax.sound.sampled.AudioFormat as PcmFormat
 
 /**
  * Captures the default Windows microphone for one CarPlay input stream (call or Siri) and sends
- * it to the iPhone as sealed RTP, as DiPlay's Android MicrophoneUplink does.
+ * it to the iPhone as sealed RTP, as DiPlay's Android MicrophoneUplink does. With [capture] off
+ * the stream carries silence at the same rate: the iPhone still routes car audio to a receiver
+ * with a microphone, but nothing is recorded on this PC.
  */
 class DesktopMicrophone(
     private val config: MicrophoneConfig,
     private val log: (String) -> Unit,
+    private val capture: Boolean = true,
+    private val opusBitrate: Int = DEFAULT_OPUS_BITRATE,
 ) : Closeable {
     private val running = AtomicBoolean(false)
+    private val captureRate = if (config.codec == AudioCodecKind.OPUS) FfmpegOpusEncoder.SAMPLE_RATE else config.sampleRate
+    /** How long one frame of audio lasts; silence is paced by it. */
+    private val frameNanos = config.samplesPerPacket * NANOS_PER_SECOND / captureRate
     private var line: TargetDataLine? = null
     private var socket: DatagramSocket? = null
     private var encoder: FfmpegOpusEncoder? = null
     private var worker: Thread? = null
 
-    /** Opens the microphone and starts streaming; false when no capture device is usable. */
+    /** Opens the microphone (or the silence source) and starts streaming; false when no capture device is usable. */
     fun start(): Boolean {
         if (!running.compareAndSet(false, true)) return true
         return try {
-            val captureRate = if (config.codec == AudioCodecKind.OPUS) FfmpegOpusEncoder.SAMPLE_RATE else config.sampleRate
-            val format = PcmFormat(captureRate.toFloat(), BITS, config.channels, true, false)
             encoder = if (config.codec == AudioCodecKind.OPUS) {
-                FfmpegOpusEncoder(config.channels, config.bitrate ?: DEFAULT_OPUS_BITRATE)
+                FfmpegOpusEncoder(config.channels, config.bitrate ?: opusBitrate)
             } else null
-            line = AudioSystem.getTargetDataLine(format).apply {
-                open(format, config.frameBytes * BUFFER_FRAMES)
-                start()
-            }
+            line = if (capture) openLine() else null
             socket = DatagramSocket()
-            worker = Thread(::capture, "desktop-mic-${config.audioType}").apply {
+            worker = Thread(::stream, "desktop-mic-${config.audioType}").apply {
                 isDaemon = true
                 start()
             }
-            log("microphone ${config.audioType}: ${config.codec} ${captureRate}Hz -> ${config.host.hostAddress}:${config.port}")
+            val source = if (capture) "capturing" else "sending silence"
+            log("microphone ${config.audioType}: $source ${config.codec} ${captureRate}Hz -> ${config.host.hostAddress}:${config.port}")
             true
         } catch (error: Exception) {
             log("microphone ${config.audioType} unavailable: ${error.message}")
@@ -53,24 +57,50 @@ class DesktopMicrophone(
         }
     }
 
-    private fun capture() {
-        val capture = line ?: return
+    private fun openLine(): TargetDataLine {
+        val format = PcmFormat(captureRate.toFloat(), BITS, config.channels, true, false)
+        return AudioSystem.getTargetDataLine(format).apply {
+            open(format, config.frameBytes * BUFFER_FRAMES)
+            start()
+        }
+    }
+
+    private fun stream() {
         val output = socket ?: return
+        val source = line
         val frame = ByteArray(config.frameBytes)
         val counters = MicrophoneCounters()
+        var dueNanos = System.nanoTime()
         try {
             while (running.get()) {
-                var filled = 0
-                while (filled < frame.size && running.get()) {
-                    val count = capture.read(frame, filled, frame.size - filled)
-                    if (count < 0) return
-                    filled += count
+                if (source != null) {
+                    if (!fill(source, frame)) return
+                } else {
+                    dueNanos += frameNanos
+                    awaitSilence(dueNanos)
                 }
-                if (filled == frame.size && running.get()) send(output, counters, frame)
+                if (running.get()) send(output, counters, frame)
             }
         } catch (error: Exception) {
             if (running.get()) log("microphone ${config.audioType} stopped: ${error.message}")
         }
+    }
+
+    /** Reads one whole frame from the microphone; false once the line has ended or capture stopped. */
+    private fun fill(source: TargetDataLine, frame: ByteArray): Boolean {
+        var filled = 0
+        while (filled < frame.size && running.get()) {
+            val count = source.read(frame, filled, frame.size - filled)
+            if (count < 0) return false
+            filled += count
+        }
+        return filled == frame.size
+    }
+
+    /** Waits until the next frame of silence is due, so silence flows at the microphone's real rate. */
+    private fun awaitSilence(dueNanos: Long) {
+        val wait = dueNanos - System.nanoTime()
+        if (wait > 0) TimeUnit.NANOSECONDS.sleep(wait)
     }
 
     private fun send(output: DatagramSocket, counters: MicrophoneCounters, frame: ByteArray) {
@@ -107,5 +137,6 @@ class DesktopMicrophone(
         const val BUFFER_FRAMES = 4
         const val DEFAULT_OPUS_BITRATE = 48_000
         const val CLOSE_JOIN_MILLIS = 1_000L
+        const val NANOS_PER_SECOND = 1_000_000_000L
     }
 }

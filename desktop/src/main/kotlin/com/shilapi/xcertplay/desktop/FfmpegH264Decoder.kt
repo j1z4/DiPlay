@@ -32,10 +32,10 @@ import java.awt.image.DataBufferByte
 import java.io.IOException
 
 /**
- * Low-latency H.264 decoding with FFmpeg, producing BGR images for Swing.
- * Not thread-safe: one decode thread owns an instance.
+ * Low-latency H.264 decoding with FFmpeg, producing BGR images for Swing, with [threads] slice
+ * threads (the Decoder threads setting). Not thread-safe: one decode thread owns an instance.
  */
-class FfmpegH264Decoder : H264Decoder {
+class FfmpegH264Decoder(threads: Int = DEFAULT_THREADS) : H264Decoder {
     private val context: AVCodecContext
     private val packet: AVPacket = av_packet_alloc()
     private val frame: AVFrame = av_frame_alloc()
@@ -49,7 +49,7 @@ class FfmpegH264Decoder : H264Decoder {
         context = avcodec_alloc_context3(codec)
         context.flags(context.flags() or AV_CODEC_FLAG_LOW_DELAY)
         context.thread_type(FF_THREAD_SLICE)
-        context.thread_count(DECODE_THREADS)
+        context.thread_count(threads)
         val opened = avcodec_open2(context, codec, null as PointerPointer<*>?)
         if (opened < 0) throw IOException("FFmpeg H.264 open failed: $opened")
     }
@@ -107,7 +107,7 @@ class FfmpegH264Decoder : H264Decoder {
     }
 
     private companion object {
-        const val DECODE_THREADS = 2
+        const val DEFAULT_THREADS = 2
         /** avcodec.h FF_THREAD_SLICE; slice threading adds no frame of latency, unlike frame threading. */
         const val FF_THREAD_SLICE = 2
         const val BYTES_PER_PIXEL = 3

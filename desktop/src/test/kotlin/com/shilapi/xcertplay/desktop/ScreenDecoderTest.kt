@@ -5,6 +5,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.awt.image.BufferedImage
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -77,6 +78,28 @@ class ScreenDecoderTest {
         assertTrue(recovered.await(DECODE_TIMEOUT_SECONDS, TimeUnit.SECONDS))
         assertTrue(logs.contains("cluster: requesting keyframe (decoder rejected data)"))
         assertEquals(0, surface.shown.get())
+    }
+
+    @Test fun aFullQueueDropsTheBacklogAndAsksForAKeyframe() {
+        val release = CountDownLatch(1)
+        val stuck = object : H264Decoder {
+            override fun decode(annexB: ByteArray, onImage: (BufferedImage) -> Unit): Boolean {
+                release.await(DECODE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                return true
+            }
+
+            override fun close() = Unit
+        }
+        val recovered = CountDownLatch(1)
+        val screen = ScreenDecoder("cluster", 111, surface, logs::add, queueCapacity = 1) { stuck }.also { decoder = it }
+        screen.setRecoveryHandler { recovered.countDown() }
+
+        // One unit may be in the decoder and one in the queue; the third cannot wait.
+        repeat(3) { screen.onFrame(nalUnit(IDR_HEADER, it)) }
+
+        assertTrue(recovered.await(DECODE_TIMEOUT_SECONDS, TimeUnit.SECONDS))
+        assertTrue(logs.contains("cluster: requesting keyframe (decode queue full)"))
+        release.countDown()
     }
 
     @Test fun tornDownStreamClearsTheSurfaceAndReportsItsNextFirstFrame() {

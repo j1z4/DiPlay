@@ -11,13 +11,15 @@ import javax.sound.sampled.SourceDataLine
 import javax.sound.sampled.AudioFormat as PcmFormat
 
 /**
- * Plays one CarPlay audio stream (media, navigation, Siri...) on its own javax.sound line;
- * Windows mixes concurrent streams. RTP payloads are decoded on a dedicated worker thread.
+ * Plays one CarPlay audio stream (media, navigation, Siri...) on its own javax.sound line with a
+ * [bufferMillis] output buffer; Windows mixes concurrent streams. RTP payloads are decoded on a
+ * dedicated worker thread.
  */
 class DesktopAudioOutput(
     private val name: String,
     private val format: AudioFormat,
     private val log: (String) -> Unit,
+    private val bufferMillis: Int = DEFAULT_BUFFER_MILLIS,
 ) : Closeable {
     private val packets = LinkedBlockingQueue<ByteArray>(QUEUE_CAPACITY)
     @Volatile private var running = true
@@ -43,7 +45,7 @@ class DesktopAudioOutput(
             runCatching { FfmpegAudioDecoder(format.codec, format.sampleRate, format.channels) }
                 .onFailure { log("audio $name: decoder unavailable: ${it.message}") }
                 .getOrNull() ?: return line.close()
-        log("audio $name: playing ${format.codec} ${format.sampleRate}Hz ${format.channels}ch")
+        log("audio $name: playing ${format.codec} ${format.sampleRate}Hz ${format.channels}ch buffer ${bufferMillis}ms")
         try {
             while (running) {
                 val rtp = packets.poll(POLL_MILLIS, TimeUnit.MILLISECONDS) ?: continue
@@ -71,7 +73,7 @@ class DesktopAudioOutput(
 
     private fun openLine(): SourceDataLine? = runCatching {
         val pcm = PcmFormat(format.sampleRate.toFloat(), BITS, format.channels, true, false)
-        val bufferBytes = format.sampleRate * format.channels * (BITS / 8) * BUFFER_MILLIS / 1000
+        val bufferBytes = format.sampleRate * format.channels * (BITS / 8) * bufferMillis / 1000
         AudioSystem.getSourceDataLine(pcm).apply {
             open(pcm, bufferBytes)
             start()
@@ -95,7 +97,7 @@ class DesktopAudioOutput(
         const val QUEUE_CAPACITY = 200
         const val POLL_MILLIS = 100L
         const val BITS = 16
-        const val BUFFER_MILLIS = 120
+        const val DEFAULT_BUFFER_MILLIS = 120
         val EMPTY = ByteArray(0)
     }
 }

@@ -22,8 +22,9 @@ import javax.swing.SwingUtilities
 import javax.swing.WindowConstants
 
 /**
- * CarPlay surface: paints the newest decoded frame aspect-fit on black, shows a status line until
- * video arrives, and turns presses/drags into CarPlay touch contacts. The main screen may be
+ * CarPlay surface: paints the newest decoded frame aspect-fit on black (or stretched over the
+ * window when [keepAspect] is off), resampled as the [scaling] choice says, shows a status line
+ * until video arrives, and turns presses/drags into CarPlay touch contacts. The main screen may be
  * fullscreen; the instrument cluster uses it windowed with an [onTouch] that does nothing.
  */
 class VideoWindow(
@@ -32,7 +33,10 @@ class VideoWindow(
     private val onTouch: (List<AirPlayContact>) -> Unit,
     private val onClose: () -> Unit,
     title: String = APP_NAME,
+    scaling: String = SettingsSchema.SCALING.default,
+    private val keepAspect: Boolean = true,
 ) : VideoSurface {
+    private val interpolation = interpolationHint(scaling)
     @Volatile private var image: BufferedImage? = null
     @Volatile private var status: String = "Starting $title"
     private val panel = SurfacePanel()
@@ -111,18 +115,14 @@ class VideoWindow(
                 g.drawString(status, (this.width - width) / 2, this.height / 2)
                 return
             }
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interpolation)
             val target = contentRect(current)
             g.drawImage(current, target.x, target.y, target.width, target.height, null)
         }
 
-        /** Aspect-fit rectangle of the video inside the panel. */
-        fun contentRect(current: BufferedImage): Rectangle {
-            val scale = minOf(width.toDouble() / current.width, height.toDouble() / current.height)
-            val w = (current.width * scale).toInt()
-            val h = (current.height * scale).toInt()
-            return Rectangle((width - w) / 2, (height - h) / 2, w, h)
-        }
+        /** Where the video goes inside the panel; touches map through the same rectangle. */
+        fun contentRect(current: BufferedImage): Rectangle =
+            videoRect(width, height, current.width, current.height, keepAspect)
     }
 
     private inner class TouchAdapter : MouseAdapter() {
@@ -140,7 +140,23 @@ class VideoWindow(
         }
     }
 
-    private companion object {
-        const val STATUS_FONT_SIZE = 28
+    companion object {
+        private const val STATUS_FONT_SIZE = 28
+
+        /** The Java2D resampling for a Scaling quality choice; anything unknown is bilinear. */
+        internal fun interpolationHint(scaling: String): Any = when (scaling) {
+            "nearest" -> RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR
+            "bicubic" -> RenderingHints.VALUE_INTERPOLATION_BICUBIC
+            else -> RenderingHints.VALUE_INTERPOLATION_BILINEAR
+        }
+
+        /** The picture aspect-fit and centred in the panel, or the whole panel when [keepAspect] is off. */
+        internal fun videoRect(panelWidth: Int, panelHeight: Int, imageWidth: Int, imageHeight: Int, keepAspect: Boolean): Rectangle {
+            if (!keepAspect) return Rectangle(0, 0, panelWidth, panelHeight)
+            val scale = minOf(panelWidth.toDouble() / imageWidth, panelHeight.toDouble() / imageHeight)
+            val w = (imageWidth * scale).toInt()
+            val h = (imageHeight * scale).toInt()
+            return Rectangle((panelWidth - w) / 2, (panelHeight - h) / 2, w, h)
+        }
     }
 }

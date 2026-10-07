@@ -77,6 +77,8 @@ class CarPlaySession(
             windowSize = Dimension(settings.width, settings.height),
             onTouch = { contacts -> airPlay.get()?.sendTouch(contacts) },
             onClose = { if (active.get() === this) stop() },
+            scaling = settings.advanced[SettingsSchema.SCALING],
+            keepAspect = settings.advanced[SettingsSchema.KEEP_ASPECT],
         )
         // The cluster has no input and is never the kiosk surface; closing it leaves the run going.
         private val clusterWindow = if (!settings.clusterDisplay) null else VideoWindow(
@@ -89,7 +91,7 @@ class CarPlaySession(
         val hasCluster: Boolean get() = clusterWindow != null
 
         fun session(): AirPlaySession? = airPlay.get()
-        private val sink = DesktopMediaSink(window, clusterWindow, log)
+        private val sink = DesktopMediaSink(window, clusterWindow, log, settings.advanced)
         private val receiver = WirelessReceiver(
             settings = settings,
             store = store,

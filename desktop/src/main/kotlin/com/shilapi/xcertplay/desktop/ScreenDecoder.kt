@@ -23,16 +23,18 @@ interface H264Decoder : Closeable {
  * Decoding state for one CarPlay screen stream (main screen 110 or cluster 111): the access-unit
  * queue, the H.264 parameter sets, keyframe recovery and first-frame reporting, with a decode
  * thread painting into one [surface]. Mirrors AndroidMediaSink's keyframe recovery so DiPlay's
- * session logic behaves the same. [label] prefixes the log lines ("video", "cluster").
+ * session logic behaves the same. [label] prefixes the log lines ("video", "cluster"); once
+ * [queueCapacity] access units wait for the decoder, the backlog is dropped for a fresh keyframe.
  */
 class ScreenDecoder(
     private val label: String,
     private val streamType: Int,
     private val surface: VideoSurface,
     private val log: (String) -> Unit,
+    queueCapacity: Int = DEFAULT_QUEUE_CAPACITY,
     private val newDecoder: () -> H264Decoder = { FfmpegH264Decoder() },
 ) : Closeable {
-    private val queue = LinkedBlockingQueue<ByteArray>(QUEUE_CAPACITY)
+    private val queue = LinkedBlockingQueue<ByteArray>(queueCapacity)
     @Volatile private var parameterSets: ByteArray = ByteArray(0)
     @Volatile private var recovery: () -> Unit = {}
     @Volatile private var diagnostic: (String) -> Unit = {}
@@ -144,7 +146,7 @@ class ScreenDecoder(
     }
 
     private companion object {
-        const val QUEUE_CAPACITY = 90
+        const val DEFAULT_QUEUE_CAPACITY = 90
         const val POLL_MILLIS = 250L
         const val RECOVERY_INTERVAL_NANOS = 1_000_000_000L
         val START_CODE = byteArrayOf(0, 0, 0, 1)
