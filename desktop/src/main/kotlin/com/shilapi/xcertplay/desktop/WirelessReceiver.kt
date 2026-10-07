@@ -64,7 +64,11 @@ class WirelessReceiver(
         closables += socket
         val bluetoothMac = socket.localAddress
 
-        val config = airPlayConfig(DesktopStore.deviceId(identity), bluetoothMac)
+        val config = airPlayConfig(settings, DesktopStore.deviceId(identity), bluetoothMac)
+        config.cluster?.let {
+            log("cluster: advertising display ${it.widthPixels}x${it.heightPixels} " +
+                "initialURL=${it.initialUrl}; altScreen offered in SETUP")
+        }
         val server = DesktopAirPlayServer(
             bindAddress = host, config = config, identity = identity, pairings = store.pairingStore(), mfi = mfi,
             listener = sessionListener, media = media, listenerIdentity = AirPlayListenerIdentity(1), log = log,
@@ -180,24 +184,6 @@ class WirelessReceiver(
         status("Wireless CarPlay active; Bluetooth released")
     }
 
-    private fun airPlayConfig(deviceId: String, bluetoothMac: String) = AirPlayConfig(
-        deviceName = DEVICE_NAME,
-        deviceId = deviceId,
-        btMac = bluetoothMac,
-        sourceVersion = SOURCE_VERSION,
-        main = AirPlayDisplayConfig(
-            widthPixels = settings.width and 1.inv(),
-            heightPixels = settings.height and 1.inv(),
-            fps = settings.fps,
-        ),
-        manufacturer = DEVICE_NAME,
-        model = DEVICE_NAME,
-        oemLabel = DEVICE_NAME,
-        // Without microphone input formats the iPhone treats the receiver as having no car audio
-        // and keeps every sound on the phone.
-        microphone = true,
-    )
-
     private fun endpoint(
         wlan: WindowsWlanInfo,
         host: InetAddress,
@@ -229,6 +215,27 @@ class WirelessReceiver(
         private const val BOOTSTRAP_TIMEOUT_MILLIS = 5 * 60_000L
         private const val BLUETOOTH_ATTEMPTS = 4
         private const val BLUETOOTH_RETRY_MILLIS = 3_000L
+
+        /** The receiver as advertised to the iPhone; the cluster display only when enabled in settings. */
+        internal fun airPlayConfig(settings: DesktopSettings, deviceId: String, bluetoothMac: String) = AirPlayConfig(
+            deviceName = DEVICE_NAME,
+            deviceId = deviceId,
+            btMac = bluetoothMac,
+            sourceVersion = SOURCE_VERSION,
+            main = AirPlayDisplayConfig(
+                widthPixels = settings.width and 1.inv(),
+                heightPixels = settings.height and 1.inv(),
+                fps = settings.fps,
+            ),
+            // Experimental second display: SETUP then enables altScreen and the iPhone streams type 111.
+            cluster = if (settings.clusterDisplay) ClusterDisplay.config() else null,
+            manufacturer = DEVICE_NAME,
+            model = DEVICE_NAME,
+            oemLabel = DEVICE_NAME,
+            // Without microphone input formats the iPhone treats the receiver as having no car audio
+            // and keeps every sound on the phone.
+            microphone = true,
+        )
 
         /** The IPv4 address of the Wi-Fi adapter netsh reported (Java names it by its description). */
         fun wifiHostAddress(wlan: WindowsWlanInfo): InetAddress {

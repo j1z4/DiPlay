@@ -5,79 +5,56 @@ import com.shilapi.xcertplay.airplay.AudioStreamId
 import com.shilapi.xcertplay.airplay.MediaSink
 import com.shilapi.xcertplay.airplay.MicrophoneConfig
 import com.shilapi.xcertplay.airplay.VideoCodec
-import com.shilapi.xcertplay.media.MediaCodecSupport
 import java.io.Closeable
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.TimeUnit
 
 /**
- * Renders the main CarPlay screen on Windows: Annex B access units are decoded by FFmpeg on a
- * dedicated thread and painted into [window]. Mirrors AndroidMediaSink's keyframe recovery and
- * first-frame reporting so DiPlay's session logic behaves the same.
+ * Renders CarPlay on Windows: the main screen (stream 110) and, when a cluster window is given,
+ * the instrument cluster (stream 111) each get a [ScreenDecoder] painting into their window, while
+ * audio plays through [DesktopAudioOutput] and microphone uplinks come from [DesktopMicrophone].
  */
 class DesktopMediaSink(
-    private val window: VideoWindow,
+    window: VideoSurface,
+    clusterWindow: VideoSurface?,
     private val log: (String) -> Unit,
+    newDecoder: () -> H264Decoder = { FfmpegH264Decoder() },
 ) : MediaSink, Closeable {
-    private val queue = LinkedBlockingQueue<ByteArray>(QUEUE_CAPACITY)
+    private val screens: Map<Int, ScreenDecoder> = buildMap {
+        put(MAIN_SCREEN, ScreenDecoder("video", MAIN_SCREEN, window, log, newDecoder))
+        if (clusterWindow != null) put(ALT_SCREEN, ScreenDecoder("cluster", ALT_SCREEN, clusterWindow, log, newDecoder))
+    }
     private val audio = ConcurrentHashMap<AudioStreamId, DesktopAudioOutput>()
     private val microphones = ConcurrentHashMap<AudioStreamId, DesktopMicrophone>()
-    @Volatile private var parameterSets: ByteArray = ByteArray(0)
-    @Volatile private var recovery: () -> Unit = {}
-    @Volatile private var diagnostic: (String) -> Unit = {}
-    @Volatile private var running = true
-    @Volatile private var firstFrameReported = false
-    @Volatile private var awaitingKeyframe = true
-    private var lastRecoveryNanos = 0L
-
-    private val decodeThread = Thread(::decodeLoop, "desktop-video-decode").apply {
-        isDaemon = true
-        start()
-    }
 
     override fun onVideoCodec(type: Int, codec: VideoCodec) {
-        if (type != MAIN_SCREEN) return
-        if (codec != VideoCodec.H264) log("video: unsupported codec $codec; only H.264 is configured")
+        screens[type]?.onCodec(codec)
     }
 
     override fun onVideoConfig(type: Int, codecData: ByteArray) {
-        if (type != MAIN_SCREEN) return
-        val (sps, pps) = MediaCodecSupport.avcParameterSets(codecData)
-        parameterSets = START_CODE + sps + START_CODE + pps
-        awaitingKeyframe = true
-        log("video: H.264 parameter sets sps=${sps.size} pps=${pps.size}")
+        screens[type]?.onConfig(codecData)
     }
 
     override fun onVideoFrame(type: Int, naluBytes: ByteArray) {
-        if (type != MAIN_SCREEN) return
-        val annexB = MediaCodecSupport.toAnnexB(naluBytes)
-        if (annexB.isEmpty()) return
-        if (!queue.offer(annexB)) {
-            // Fell behind: drop the backlog and resume from a fresh keyframe rather than lag.
-            queue.clear()
-            awaitingKeyframe = true
-            requestKeyframe("decode queue full")
-        }
+        screens[type]?.onFrame(naluBytes)
     }
 
     override fun setVideoRecoveryHandler(type: Int, handler: () -> Unit) {
-        if (type == MAIN_SCREEN) recovery = handler
+        screens[type]?.setRecoveryHandler(handler)
     }
 
     override fun setVideoDiagnosticHandler(type: Int, handler: (String) -> Unit) {
-        if (type == MAIN_SCREEN) diagnostic = handler
+        screens[type]?.setDiagnosticHandler(handler)
     }
 
     override fun onScreenStreamActive(type: Int, active: Boolean) {
-        if (type != MAIN_SCREEN) return
-        log("video: main screen active=$active")
-        if (!active) {
-            queue.clear()
-            firstFrameReported = false
-            awaitingKeyframe = true
-            window.clearVideo()
+        val screen = screens[type]
+        if (screen == null) {
+            if (type == ALT_SCREEN && active) log("cluster: iPhone set up stream 111 but the cluster display is off; ignoring it")
+            return
         }
+        // The iPhone sets up stream 111 only after taking the altScreen feature SETUP offered.
+        if (type == ALT_SCREEN && active) log("cluster: altScreen negotiated; iPhone set up stream 111")
+        screen.setActive(active)
     }
 
     override fun onAudioStarted(id: AudioStreamId, format: AudioFormat, firstSample: Int) {
@@ -103,8 +80,7 @@ class DesktopMediaSink(
     }
 
     override fun close() {
-        running = false
-        decodeThread.interrupt()
+        screens.values.forEach(ScreenDecoder::close)
         audio.values.forEach(DesktopAudioOutput::close)
         audio.clear()
         microphones.values.forEach(DesktopMicrophone::close)
@@ -113,57 +89,8 @@ class DesktopMediaSink(
 
     private fun AudioStreamId.label() = "$type-$audioType"
 
-    private fun decodeLoop() {
-        FfmpegH264Decoder().use { decoder ->
-            while (running) {
-                val unit = try {
-                    queue.poll(POLL_MILLIS, TimeUnit.MILLISECONDS) ?: continue
-                } catch (_: InterruptedException) {
-                    return
-                }
-                decodeUnit(decoder, unit)
-            }
-        }
-    }
-
-    private fun decodeUnit(decoder: FfmpegH264Decoder, unit: ByteArray) {
-        val keyframe = MediaCodecSupport.isRandomAccess(unit, VideoCodec.H264)
-        if (awaitingKeyframe && !keyframe) {
-            requestKeyframe("waiting for keyframe")
-            return
-        }
-        awaitingKeyframe = false
-        val input = if (keyframe) parameterSets + unit else unit
-        val accepted = decoder.decode(input) { image ->
-            window.showFrame(image)
-            if (!firstFrameReported) {
-                firstFrameReported = true
-                diagnostic("first frame rendered")
-                log("video: first frame rendered ${image.width}x${image.height}")
-            }
-        }
-        if (!accepted) {
-            awaitingKeyframe = true
-            requestKeyframe("decoder rejected data")
-        }
-    }
-
-    /** Asks the iPhone for a keyframe, at most once per [RECOVERY_INTERVAL_NANOS]. */
-    private fun requestKeyframe(reason: String) {
-        val now = System.nanoTime()
-        synchronized(this) {
-            if (now - lastRecoveryNanos < RECOVERY_INTERVAL_NANOS) return
-            lastRecoveryNanos = now
-        }
-        log("video: requesting keyframe ($reason)")
-        recovery()
-    }
-
     private companion object {
         const val MAIN_SCREEN = 110
-        const val QUEUE_CAPACITY = 90
-        const val POLL_MILLIS = 250L
-        const val RECOVERY_INTERVAL_NANOS = 1_000_000_000L
-        val START_CODE = byteArrayOf(0, 0, 0, 1)
+        const val ALT_SCREEN = 111
     }
 }

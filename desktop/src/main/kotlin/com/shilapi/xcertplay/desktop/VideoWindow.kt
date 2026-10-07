@@ -22,19 +22,21 @@ import javax.swing.SwingUtilities
 import javax.swing.WindowConstants
 
 /**
- * Fullscreen CarPlay surface: paints the newest decoded frame aspect-fit on black, shows a
- * status line until video arrives, and turns presses/drags into CarPlay touch contacts.
+ * CarPlay surface: paints the newest decoded frame aspect-fit on black, shows a status line until
+ * video arrives, and turns presses/drags into CarPlay touch contacts. The main screen may be
+ * fullscreen; the instrument cluster uses it windowed with an [onTouch] that does nothing.
  */
 class VideoWindow(
     private val fullscreen: Boolean,
     private val windowSize: Dimension,
     private val onTouch: (List<AirPlayContact>) -> Unit,
     private val onClose: () -> Unit,
-) {
+    title: String = APP_NAME,
+) : VideoSurface {
     @Volatile private var image: BufferedImage? = null
-    @Volatile private var status: String = "Starting $APP_NAME"
+    @Volatile private var status: String = "Starting $title"
     private val panel = SurfacePanel()
-    private val frame = JFrame(APP_NAME).apply {
+    private val frame = JFrame(title).apply {
         isUndecorated = fullscreen
         defaultCloseOperation = WindowConstants.DISPOSE_ON_CLOSE
         background = Color.BLACK
@@ -44,20 +46,21 @@ class VideoWindow(
         })
     }
 
-    fun show() = SwingUtilities.invokeLater {
+    /** Fullscreen, centred on screen, or directly under [below] (a second screen stacked beneath the first). */
+    fun show(below: VideoWindow? = null) = SwingUtilities.invokeLater {
         val device = GraphicsEnvironment.getLocalGraphicsEnvironment().defaultScreenDevice
         if (fullscreen && device.isFullScreenSupported) {
             device.fullScreenWindow = frame
         } else {
             panel.preferredSize = windowSize
             frame.pack()
-            frame.setLocationRelativeTo(null)
+            place(below)
             frame.isVisible = true
         }
         panel.requestFocusInWindow()
     }
 
-    fun showFrame(next: BufferedImage) {
+    override fun showFrame(next: BufferedImage) {
         image = next
         panel.repaint()
     }
@@ -71,9 +74,14 @@ class VideoWindow(
     fun close() = SwingUtilities.invokeLater { frame.dispose() }
 
     /** Back to the waiting screen when the session ends. */
-    fun clearVideo() {
+    override fun clearVideo() {
         image = null
         panel.repaint()
+    }
+
+    private fun place(below: VideoWindow?) {
+        val anchor = below?.takeIf { !it.fullscreen && it.frame.isVisible }?.frame?.bounds
+        if (anchor == null) frame.setLocationRelativeTo(null) else frame.setLocation(anchor.x, anchor.y + anchor.height)
     }
 
     private inner class SurfacePanel : JPanel() {

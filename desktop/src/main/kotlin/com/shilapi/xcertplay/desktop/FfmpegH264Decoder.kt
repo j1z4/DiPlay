@@ -29,14 +29,13 @@ import org.bytedeco.javacpp.IntPointer
 import org.bytedeco.javacpp.PointerPointer
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferByte
-import java.io.Closeable
 import java.io.IOException
 
 /**
  * Low-latency H.264 decoding with FFmpeg, producing BGR images for Swing.
  * Not thread-safe: one decode thread owns an instance.
  */
-class FfmpegH264Decoder : Closeable {
+class FfmpegH264Decoder : H264Decoder {
     private val context: AVCodecContext
     private val packet: AVPacket = av_packet_alloc()
     private val frame: AVFrame = av_frame_alloc()
@@ -59,7 +58,7 @@ class FfmpegH264Decoder : Closeable {
      * Decodes one Annex B access unit and hands each finished picture to [onImage].
      * Returns false when FFmpeg rejected the data, so the caller can request a keyframe.
      */
-    fun decode(annexB: ByteArray, onImage: (BufferedImage) -> Unit): Boolean {
+    override fun decode(annexB: ByteArray, onImage: (BufferedImage) -> Unit): Boolean {
         val data = BytePointer(*annexB)
         try {
             packet.data(data)

@@ -10,8 +10,9 @@ import kotlin.concurrent.thread
 enum class SessionState { STOPPED, CONNECTING, CONNECTED }
 
 /**
- * One CarPlay run: the wireless receiver, the media sink and the CarPlay window. Started and
- * stopped from the dashboard; closing the CarPlay window stops the run.
+ * One CarPlay run: the wireless receiver, the media sink and the CarPlay window, plus the cluster
+ * window while that experiment is on. Started and stopped from the dashboard; closing the CarPlay
+ * window stops the run.
  */
 class CarPlaySession(
     private val store: DesktopStore,
@@ -43,7 +44,15 @@ class CarPlaySession(
             onTouch = { contacts -> airPlay.get()?.sendTouch(contacts) },
             onClose = { if (active.get() === this) stop() },
         )
-        private val sink = DesktopMediaSink(window, log)
+        // The cluster has no input and is never the kiosk surface; closing it leaves the run going.
+        private val clusterWindow = if (!settings.clusterDisplay) null else VideoWindow(
+            fullscreen = false,
+            windowSize = Dimension(ClusterDisplay.WIDTH, ClusterDisplay.HEIGHT),
+            onTouch = {},
+            onClose = {},
+            title = ClusterDisplay.WINDOW_TITLE,
+        )
+        private val sink = DesktopMediaSink(window, clusterWindow, log)
         private val receiver = WirelessReceiver(
             settings = settings,
             store = store,
@@ -62,6 +71,7 @@ class CarPlaySession(
                 override fun onSessionEnded() {
                     airPlay.set(null)
                     window.clearVideo()
+                    clusterWindow?.clearVideo()
                     if (active.get() === this@Run) onState(SessionState.CONNECTING, "Session ended; waiting for iPhone")
                 }
             },
@@ -70,6 +80,7 @@ class CarPlaySession(
 
         fun start() {
             window.show()
+            clusterWindow?.show(below = window)
             thread(name = "openplay-bootstrap", isDaemon = true) {
                 try {
                     receiver.run()
@@ -87,6 +98,7 @@ class CarPlaySession(
         fun close() {
             receiver.close()
             sink.close()
+            clusterWindow?.close()
             window.close()
         }
     }
