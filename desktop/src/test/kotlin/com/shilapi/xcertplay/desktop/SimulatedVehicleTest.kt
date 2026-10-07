@@ -6,6 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.roundToLong
 
 class SimulatedVehicleTest {
     private var nowMillis = 1_760_000_000_000L
@@ -53,9 +54,9 @@ class SimulatedVehicleTest {
     }
 
     @Test fun positionReturnsToTheStartAfterOneLap() {
-        val start = SimulatedVehicle.positionAfter(0)
-        val quarter = SimulatedVehicle.positionAfter(SimulatedVehicle.LAP_MILLIS / 4)
-        val lap = SimulatedVehicle.positionAfter(SimulatedVehicle.LAP_MILLIS)
+        val start = vehicle.positionAfter(0)
+        val quarter = vehicle.positionAfter(vehicle.lapMillis / 4)
+        val lap = vehicle.positionAfter(vehicle.lapMillis)
 
         assertEquals(start.latitudeDegrees, lap.latitudeDegrees, 1e-9)
         assertEquals(start.longitudeDegrees, lap.longitudeDegrees, 1e-9)
@@ -63,6 +64,55 @@ class SimulatedVehicleTest {
         // A 500 m radius spans about 0.0045 degrees of latitude.
         assertEquals(0.0045, start.latitudeDegrees - SimulatedVehicle.CENTER_LATITUDE, 0.0001)
         assertTrue(quarter.longitudeDegrees > SimulatedVehicle.CENTER_LONGITUDE)
+    }
+
+    @Test fun vehicleSettingsShapeTheCar() {
+        val advanced = SettingsValues.DEFAULTS
+            .with(SettingsSchema.BATTERY_START, 80.0)
+            .with(SettingsSchema.BATTERY_DRAIN, 20.0)
+            .with(SettingsSchema.FULL_RANGE_KM, 300)
+            .with(SettingsSchema.CHARGING, true)
+            .with(SettingsSchema.SPEED_KMH, 90)
+            .with(SettingsSchema.CENTER_LATITUDE, 41.88)
+            .with(SettingsSchema.CENTER_LONGITUDE, -87.63)
+            .with(SettingsSchema.LOOP_METERS, 1000)
+        val car = SimulatedVehicle.configured(advanced, logged::add) { nowMillis }
+
+        val fresh = car.snapshot()
+        assertEquals(80.0, fresh.batteryPercent, 0.0)
+        assertEquals(240, fresh.rangeKm)
+        assertEquals(300, fresh.maxRangeKm)
+        assertTrue(fresh.charging)
+        nowMillis += HOUR_MILLIS
+        assertEquals(60.0, car.snapshot().batteryPercent, 0.0)
+
+        val start = car.positionAfter(0)
+        // A 1000 m radius spans about 0.009 degrees of latitude; 90 km/h is 25 m/s.
+        assertEquals(0.009, start.latitudeDegrees - 41.88, 0.0001)
+        assertEquals(25.0, start.speedMetersPerSecond!!, 0.0)
+        assertEquals((2 * Math.PI * 1000 / 25.0 * 1000).roundToLong(), car.lapMillis)
+        assertTrue(car.describe(), car.describe().contains("90 km/h loop around 41.88000,-87.63000"))
+    }
+
+    @Test fun aParkedCarStaysAtTheTopOfTheLoop() {
+        val parked = SimulatedVehicle(clock = { nowMillis }, speedKmh = 0)
+
+        val start = parked.positionAfter(0)
+        val later = parked.positionAfter(HOUR_MILLIS)
+
+        assertEquals(0L, parked.lapMillis)
+        assertEquals(start.latitudeDegrees, later.latitudeDegrees, 0.0)
+        assertEquals(start.longitudeDegrees, later.longitudeDegrees, 0.0)
+        assertEquals(0.0, later.speedMetersPerSecond!!, 0.0)
+    }
+
+    @Test fun aBatteryStartingBelowTheFloorKeepsItsOwnLevel() {
+        val nearlyEmpty = SimulatedVehicle(clock = { nowMillis }, startPercent = 3.0)
+
+        nowMillis += 10 * HOUR_MILLIS
+
+        assertEquals(3.0, nearlyEmpty.snapshot().batteryPercent, 0.0)
+        assertTrue(nearlyEmpty.snapshot().rangeWarning)
     }
 
     @Test fun addsWheelSpeedOnlyWhenRequested() {

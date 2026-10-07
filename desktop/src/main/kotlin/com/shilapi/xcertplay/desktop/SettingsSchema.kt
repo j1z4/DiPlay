@@ -132,7 +132,8 @@ object SettingsSchema {
         SettingType.Decimal(-89.0, 89.0, 0.001, "°"))
     val CENTER_LONGITUDE = Setting("vehicle.centerLongitude", VEHICLE, "Driving", "Loop centre longitude", -122.00900,
         SettingType.Decimal(-180.0, 180.0, 0.001, "°"))
-    val LOOP_METERS = Setting("vehicle.loopMeters", VEHICLE, "Driving", "Loop length", 500, SettingType.Whole(100, 20_000, 100, "m"))
+    val LOOP_METERS = Setting("vehicle.loopMeters", VEHICLE, "Driving", "Loop radius", 500, SettingType.Whole(100, 20_000, 100, "m"),
+        "The simulated car circles a loop of this radius around the centre.")
 
     // Diagnostics
     val LOG_LEVEL = Setting("diagnostics.logLevel", DIAGNOSTICS, "Logging", "Detail", "info",
