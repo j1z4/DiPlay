@@ -72,6 +72,7 @@ fun main() {
         receiver.run()
     } catch (error: Exception) {
         log("receiver failed: ${error.message}")
+        exitProcess(1)
     }
     log("receiver running; press Ctrl+C to stop")
     stopped.await()

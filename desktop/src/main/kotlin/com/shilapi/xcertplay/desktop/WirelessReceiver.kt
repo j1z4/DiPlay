@@ -60,8 +60,7 @@ class WirelessReceiver(
         val identity = store.loadIdentity()
         val mfi = LocalMfiAuthenticationClient.load(settings.mfiDirectory)
 
-        status("Connecting to iPhone over Bluetooth")
-        val socket = WindowsRfcommSocket.connect(settings.iphoneAddress, IAP2_IPHONE_UUID).also { rfcomm = it }
+        val socket = connectBluetooth().also { rfcomm = it }
         closables += socket
         val bluetoothMac = socket.localAddress
 
@@ -123,6 +122,22 @@ class WirelessReceiver(
         override fun onTransportError(message: String) = status("Connection error: $message")
 
         override fun onDebugLog(message: String) = log(message)
+    }
+
+    /** An idle or locked iPhone may miss the first page; retry a few times as Android DiPlay does. */
+    private fun connectBluetooth(): WindowsRfcommSocket {
+        var lastError: IOException? = null
+        for (attempt in 1..BLUETOOTH_ATTEMPTS) {
+            status("Connecting to iPhone over Bluetooth (attempt $attempt of $BLUETOOTH_ATTEMPTS)")
+            try {
+                return WindowsRfcommSocket.connect(settings.iphoneAddress, IAP2_IPHONE_UUID)
+            } catch (error: IOException) {
+                lastError = error
+                log("bluetooth connect attempt $attempt failed: ${error.message}")
+                if (attempt < BLUETOOTH_ATTEMPTS) Thread.sleep(BLUETOOTH_RETRY_MILLIS)
+            }
+        }
+        throw IOException("iPhone did not answer over Bluetooth; unlock it and keep Bluetooth on", lastError)
     }
 
     private fun startTunnel(
@@ -211,6 +226,8 @@ class WirelessReceiver(
         private const val DEVICE_NAME = "DiPlay"
         private const val SOURCE_VERSION = "950.7.1"
         private const val BOOTSTRAP_TIMEOUT_MILLIS = 5 * 60_000L
+        private const val BLUETOOTH_ATTEMPTS = 4
+        private const val BLUETOOTH_RETRY_MILLIS = 3_000L
 
         /** The IPv4 address of the Wi-Fi adapter netsh reported (Java names it by its description). */
         fun wifiHostAddress(wlan: WindowsWlanInfo): InetAddress {
