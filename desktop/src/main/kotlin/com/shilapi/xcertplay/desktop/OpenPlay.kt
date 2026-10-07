@@ -12,10 +12,11 @@ import javax.swing.SwingUtilities
  */
 fun main(args: Array<String>) {
     val store = DesktopStore()
-    val logFile = FileLogging.install(store.root)
+    val settings = store.loadSettings()
+    val logFile = FileLogging.install(store.root, settings.advanced[SettingsSchema.LOG_FILES])
+    Diagnostics.applyLogLevel(settings.advanced)
     val log: (String) -> Unit = { println("${LocalTime.now()} $it") }
     log("$APP_NAME starting; log ${logFile.absolutePath}")
-    val settings = store.loadSettings()
     val snapshot = args.indexOf("--snapshot").takeIf { it >= 0 }?.let { args.getOrNull(it + 1) }
     SwingUtilities.invokeLater {
         if (windowsUsesDarkTheme()) FlatDarkLaf.setup() else FlatLightLaf.setup()
@@ -30,7 +31,7 @@ fun main(args: Array<String>) {
 }
 
 /** Reads the Windows app theme (AppsUseLightTheme = 0 means dark). */
-private fun windowsUsesDarkTheme(): Boolean = runCatching {
+internal fun windowsUsesDarkTheme(): Boolean = runCatching {
     val process = ProcessBuilder(
         "reg", "query", """HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize""", "/v", "AppsUseLightTheme",
     ).redirectErrorStream(true).start()

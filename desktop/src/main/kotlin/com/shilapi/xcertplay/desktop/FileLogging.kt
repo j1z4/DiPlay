@@ -12,25 +12,25 @@ import java.time.format.DateTimeFormatter
  * into %APPDATA%\OpenPlay\logs\openplay-<timestamp>.log; the packaged OpenPlay.exe has no console.
  */
 object FileLogging {
-    private const val KEEP_FILES = 10
+    const val DEFAULT_KEEP_FILES = 10
     private val STAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
 
-    /** Starts a new log file for this run and returns it. */
-    fun install(root: File): File {
+    /** Starts a new log file for this run, keeping the newest [keepFiles] in all, and returns it. */
+    fun install(root: File, keepFiles: Int = DEFAULT_KEEP_FILES): File {
         val directory = File(root, "logs").apply { mkdirs() }
         val file = File(directory, "openplay-${LocalDateTime.now().format(STAMP)}.log")
         val sink = FileOutputStream(file, true)
         System.setOut(PrintStream(Tee(System.out, sink), true, Charsets.UTF_8))
         System.setErr(PrintStream(Tee(System.err, sink), true, Charsets.UTF_8))
-        prune(directory)
+        prune(directory, keepFiles)
         return file
     }
 
-    /** Keeps only the newest [KEEP_FILES] logs. */
-    internal fun prune(directory: File) {
+    /** Keeps only the newest [keepFiles] logs (at least the current one). */
+    internal fun prune(directory: File, keepFiles: Int = DEFAULT_KEEP_FILES) {
         directory.listFiles { candidate -> candidate.name.startsWith("openplay-") && candidate.name.endsWith(".log") }
             ?.sortedByDescending { it.name }
-            ?.drop(KEEP_FILES)
+            ?.drop(keepFiles.coerceAtLeast(1))
             ?.forEach { it.delete() }
     }
 
