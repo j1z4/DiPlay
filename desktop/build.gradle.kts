@@ -85,7 +85,12 @@ val packageOpenPlay by tasks.registering(Exec::class) {
     description = "Builds build/package/OpenPlay with OpenPlay.exe and a bundled runtime."
     dependsOn(stagePackageInput)
     val output = layout.buildDirectory.dir("package").get().asFile
-    doFirst { output.resolve("OpenPlay").deleteRecursively() }
+    doFirst {
+        val previous = output.resolve("OpenPlay")
+        check(!previous.exists() || previous.deleteRecursively()) {
+            "Could not replace $previous; close any running OpenPlay.exe from it and retry."
+        }
+    }
     executable = File(System.getProperty("java.home"), "bin/jpackage.exe").absolutePath
     args(
         "--type", "app-image",
