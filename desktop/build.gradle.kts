@@ -5,26 +5,41 @@ plugins {
     application
 }
 
-// DiPlay's protocol core is pure JVM Kotlin; compile it in place from :shared so the
-// Windows receiver and the Android app share one implementation.
-val sharedSources = file("../shared/src/main/java")
-
-kotlin {
-    compilerOptions { jvmTarget.set(JvmTarget.JVM_21) }
-    sourceSets.main {
-        kotlin.srcDir(sharedSources)
-        kotlin.include(
+// DiPlay's protocol core is pure JVM Kotlin. Mirror the portable subset of :shared into the
+// build directory so the Windows receiver and the Android app share one implementation, while
+// desktop/src keeps its own stand-ins (android.util.Log, TcpLiveness) without name clashes.
+val syncSharedSources by tasks.registering(Sync::class) {
+    from(file("../shared/src/main/java")) {
+        include(
             "com/shilapi/xcertplay/iap2/**",
             "com/shilapi/xcertplay/mfi/**",
             "com/shilapi/xcertplay/transport/Iap2*.kt",
             "com/shilapi/xcertplay/transport/BlockingDuplexByteStream.kt",
             "com/shilapi/xcertplay/transport/I2cTransport.kt",
-            "com/shilapi/xcertplay/transport/RfcommDuplexStream.kt",
             "com/shilapi/xcertplay/transport/IphoneUsbException.kt",
-            "com/shilapi/xcertplay/desktop/**",
+            "com/shilapi/xcertplay/transport/RfcommDuplexStream.kt",
+            "com/shilapi/xcertplay/airplay/**",
+            "com/shilapi/xcertplay/network/AirPlayPortSelector.kt",
+            "com/shilapi/xcertplay/network/CarPlayBonjourProtocol.kt",
+            "com/shilapi/xcertplay/network/WirelessHotspotManager.kt",
+            "com/shilapi/xcertplay/network/WirelessStartupPolicy.kt",
+            "com/shilapi/xcertplay/orchestration/FirstTcpWatchdog.kt",
+            "com/shilapi/xcertplay/media/TouchLatencyProbe.kt",
         )
-        // USB-only; depends on the Android USB host stack.
-        kotlin.exclude("com/shilapi/xcertplay/transport/Iap2UsbMuxHost.kt")
+        exclude(
+            // USB-only; depends on the Android USB host stack.
+            "com/shilapi/xcertplay/transport/Iap2UsbMuxHost.kt",
+            // Android key events; unused by the AirPlay session and media engine.
+            "com/shilapi/xcertplay/airplay/CarPlayMediaButton.kt",
+        )
+    }
+    into(layout.buildDirectory.dir("shared-src"))
+}
+
+kotlin {
+    compilerOptions { jvmTarget.set(JvmTarget.JVM_21) }
+    sourceSets.main {
+        kotlin.srcDir(syncSharedSources)
     }
 }
 
@@ -42,5 +57,5 @@ dependencies {
 }
 
 application {
-    mainClass.set("com.shilapi.xcertplay.desktop.BluetoothProbeKt")
+    mainClass.set("com.shilapi.xcertplay.desktop.DiPlayWindowsKt")
 }
