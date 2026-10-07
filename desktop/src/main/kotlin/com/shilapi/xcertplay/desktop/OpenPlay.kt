@@ -10,7 +10,7 @@ import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 private val SETTINGS_TEMPLATE = """
-    # DiPlay for Windows settings
+    # OpenPlay settings
     # Bluetooth address of your paired iPhone (Windows Settings > Bluetooth & devices).
     iphoneAddress=
     # Password of the Wi-Fi network this PC and the iPhone share (blank for an open network).
@@ -50,7 +50,7 @@ fun main() {
     val receiver = WirelessReceiver(
         settings = settings,
         store = store,
-        media = CarPlayMediaEngine(sink),
+        media = CarPlayMediaEngine(sink, microphoneEnabled = true),
         events = object : ReceiverEvents {
             override fun onStatus(message: String) = window.setStatus(message)
             override fun onSessionActive(session: AirPlaySession) = activeSession.set(session)

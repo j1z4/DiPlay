@@ -3,6 +3,7 @@ package com.shilapi.xcertplay.desktop
 import com.shilapi.xcertplay.airplay.AudioFormat
 import com.shilapi.xcertplay.airplay.AudioStreamId
 import com.shilapi.xcertplay.airplay.MediaSink
+import com.shilapi.xcertplay.airplay.MicrophoneConfig
 import com.shilapi.xcertplay.airplay.VideoCodec
 import com.shilapi.xcertplay.media.MediaCodecSupport
 import java.io.Closeable
@@ -21,6 +22,7 @@ class DesktopMediaSink(
 ) : MediaSink, Closeable {
     private val queue = LinkedBlockingQueue<ByteArray>(QUEUE_CAPACITY)
     private val audio = ConcurrentHashMap<AudioStreamId, DesktopAudioOutput>()
+    private val microphones = ConcurrentHashMap<AudioStreamId, DesktopMicrophone>()
     @Volatile private var parameterSets: ByteArray = ByteArray(0)
     @Volatile private var recovery: () -> Unit = {}
     @Volatile private var diagnostic: (String) -> Unit = {}
@@ -90,11 +92,23 @@ class DesktopMediaSink(
         audio.remove(id)?.close()
     }
 
+    override fun onMicrophoneStarted(id: AudioStreamId, config: MicrophoneConfig) {
+        // Runs on the downlink thread; a missing microphone must not stop playback.
+        val microphone = microphones.computeIfAbsent(id) { DesktopMicrophone(config, log) }
+        if (!microphone.start()) microphones.remove(id, microphone)
+    }
+
+    override fun onMicrophoneStopped(id: AudioStreamId) {
+        microphones.remove(id)?.close()
+    }
+
     override fun close() {
         running = false
         decodeThread.interrupt()
         audio.values.forEach(DesktopAudioOutput::close)
         audio.clear()
+        microphones.values.forEach(DesktopMicrophone::close)
+        microphones.clear()
     }
 
     private fun AudioStreamId.label() = "$type-$audioType"

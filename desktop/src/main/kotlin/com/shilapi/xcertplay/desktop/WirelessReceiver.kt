@@ -113,6 +113,7 @@ class WirelessReceiver(
         }
 
         override fun onCommand(session: AirPlaySession, type: String, params: Map<String, Any?>) {
+            if (type == "modesChanged") log("modes: $params")
             if (type.equals("disableBluetooth", true) || type.equals("disable-bluetooth", true)) {
                 handoffRequested.set(true)
                 completeHandoffIfReady()
@@ -185,13 +186,16 @@ class WirelessReceiver(
         manufacturer = DEVICE_NAME,
         model = DEVICE_NAME,
         oemLabel = DEVICE_NAME,
+        // Without microphone input formats the iPhone treats the receiver as having no car audio
+        // and keeps every sound on the phone.
+        microphone = true,
     )
 
     private fun identification(deviceId: String) = Iap2IdentificationConfig(
         name = DEVICE_NAME,
         modelIdentifier = DEVICE_NAME,
         manufacturer = DEVICE_NAME,
-        serialNumber = "DIPLAY-" + deviceId.replace(":", ""),
+        serialNumber = "OPENPLAY-" + deviceId.replace(":", ""),
         firmwareVersion = "0.1.0",
         hardwareVersion = "1.0",
         carPlayUsbInterfaceNumber = 0,
@@ -223,7 +227,7 @@ class WirelessReceiver(
     }
 
     companion object {
-        private const val DEVICE_NAME = "DiPlay"
+        private const val DEVICE_NAME = APP_NAME
         private const val SOURCE_VERSION = "950.7.1"
         private const val BOOTSTRAP_TIMEOUT_MILLIS = 5 * 60_000L
         private const val BLUETOOTH_ATTEMPTS = 4

@@ -32,9 +32,9 @@ class VideoWindow(
     private val onClose: () -> Unit,
 ) {
     @Volatile private var image: BufferedImage? = null
-    @Volatile private var status: String = "Starting DiPlay"
+    @Volatile private var status: String = "Starting $APP_NAME"
     private val panel = SurfacePanel()
-    private val frame = JFrame("DiPlay").apply {
+    private val frame = JFrame(APP_NAME).apply {
         isUndecorated = fullscreen
         defaultCloseOperation = WindowConstants.DISPOSE_ON_CLOSE
         background = Color.BLACK

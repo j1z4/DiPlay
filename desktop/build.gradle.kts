@@ -63,5 +63,5 @@ dependencies {
 }
 
 application {
-    mainClass.set("com.shilapi.xcertplay.desktop.DiPlayWindowsKt")
+    mainClass.set("com.shilapi.xcertplay.desktop.OpenPlayKt")
 }

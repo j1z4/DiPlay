@@ -11,4 +11,4 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "diplay-desktop"
+rootProject.name = "openplay"

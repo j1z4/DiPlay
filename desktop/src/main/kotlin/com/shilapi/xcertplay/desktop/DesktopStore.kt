@@ -7,6 +7,9 @@ import java.security.MessageDigest
 import java.util.HexFormat
 import java.util.Properties
 
+/** Product name shown in the window and advertised to the iPhone. */
+const val APP_NAME = "OpenPlay"
+
 /** User-editable receiver settings, read from settings.properties. */
 data class DesktopSettings(
     val iphoneAddress: String,
@@ -20,7 +23,7 @@ data class DesktopSettings(
 )
 
 /**
- * File-backed state for the Windows receiver under %APPDATA%\DiPlay: the AirPlay identity the
+ * File-backed state for the Windows receiver under %APPDATA%\OpenPlay: the AirPlay identity the
  * iPhone pairs with, the paired controllers, and the settings file.
  */
 class DesktopStore(val root: File = defaultRoot()) {
@@ -89,7 +92,7 @@ class DesktopStore(val root: File = defaultRoot()) {
 
     private fun write(file: File, properties: Properties) {
         val temporary = File(file.parentFile, file.name + ".tmp")
-        temporary.writer(Charsets.UTF_8).use { properties.store(it, "DiPlay for Windows") }
+        temporary.writer(Charsets.UTF_8).use { properties.store(it, APP_NAME) }
         check(temporary.renameTo(file) || (file.delete() && temporary.renameTo(file))) {
             "Could not save ${file.absolutePath}"
         }
@@ -100,8 +103,16 @@ class DesktopStore(val root: File = defaultRoot()) {
         const val DEFAULT_HEIGHT = 720
         const val DEFAULT_FPS = 60
 
-        fun defaultRoot(): File =
-            File(System.getenv("APPDATA") ?: System.getProperty("user.home"), "DiPlay")
+        /** %APPDATA%\OpenPlay; a folder left by the earlier DiPlay-named build is moved over once. */
+        fun defaultRoot(): File {
+            val base = File(System.getenv("APPDATA") ?: System.getProperty("user.home"))
+            val root = File(base, APP_NAME)
+            val legacy = File(base, LEGACY_FOLDER)
+            if (!root.exists() && legacy.isDirectory) legacy.renameTo(root)
+            return root
+        }
+
+        private const val LEGACY_FOLDER = "DiPlay"
 
         /** DiPlay's AirPlay device id: a locally administered MAC derived from the public key. */
         fun deviceId(identity: AirPlayIdentity): String {
