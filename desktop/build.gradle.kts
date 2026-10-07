@@ -14,6 +14,7 @@ val syncSharedSources by tasks.registering(Sync::class) {
             "com/shilapi/xcertplay/iap2/**",
             "com/shilapi/xcertplay/mfi/**",
             "com/shilapi/xcertplay/transport/Iap2*.kt",
+            "com/shilapi/xcertplay/transport/VehicleSpeedNmea.kt",
             "com/shilapi/xcertplay/transport/BlockingDuplexByteStream.kt",
             "com/shilapi/xcertplay/transport/I2cTransport.kt",
             "com/shilapi/xcertplay/transport/IphoneUsbException.kt",

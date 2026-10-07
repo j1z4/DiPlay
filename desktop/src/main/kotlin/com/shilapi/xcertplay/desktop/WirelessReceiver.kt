@@ -77,15 +77,18 @@ class WirelessReceiver(
         val base = identification(config.deviceId)
         val endpoint = endpoint(wlan, host, port, config, identity.publicKeyHex)
         val mfiClient = Iap2MfiAuthenticationClient(mfi)
+        // One car for the whole run: its battery keeps draining across tunnel reconnects.
+        val vehicle = if (settings.vehicleData) SimulatedVehicle(log = log) else null
         media.setIapTunnelHandler { stream ->
-            startTunnel(stream, base.forWirelessLink(Iap2WirelessLinkRole.RUNTIME_TUNNEL, wireless), endpoint, mfiClient)
+            val identification = linkIdentification(base, Iap2WirelessLinkRole.RUNTIME_TUNNEL, wireless, settings.vehicleData)
+            startTunnel(stream, identification, endpoint, mfiClient, vehicle)
         }
 
         val session = Iap2Session.openWireless(socket.duplexStream(), traceContext = "wireless-rfcomm")
         bootstrapSession = session
         status("Authenticating with iPhone")
         val result = Iap2WirelessControlClient(session, mfiClient).run(
-            identification = base.forWirelessLink(Iap2WirelessLinkRole.BLUETOOTH_BOOTSTRAP, wireless),
+            identification = linkIdentification(base, Iap2WirelessLinkRole.BLUETOOTH_BOOTSTRAP, wireless, settings.vehicleData),
             endpoint = endpoint,
             timeoutMillis = BOOTSTRAP_TIMEOUT_MILLIS,
             onStartSessionSent = { status("Waiting for iPhone to join over Wi-Fi") },
@@ -146,14 +149,18 @@ class WirelessReceiver(
         identification: Iap2IdentificationConfig,
         endpoint: Iap2WirelessCarPlayEndpoint,
         mfiClient: Iap2MfiAuthenticationClient,
+        vehicle: SimulatedVehicle?,
     ): Boolean {
         tunnelExecutor.execute {
             runCatching {
+                vehicle?.let { log("vehicle: declaring a simulated EV on the Wi-Fi tunnel; ${it.describe()}") }
                 val tunnel = Iap2Session.openTunnel(stream, traceContext = "wireless-tunnel")
                 Iap2WirelessControlClient(tunnel, mfiClient).run(
                     identification = identification,
                     endpoint = endpoint,
                     timeoutMillis = Iap2WirelessControlClient.NO_TIMEOUT_MILLIS,
+                    locationProvider = vehicle,
+                    vehicleStatusProvider = vehicle,
                     onReady = {
                         tunnelReady.set(true)
                         completeHandoffIfReady()
@@ -189,16 +196,6 @@ class WirelessReceiver(
         // Without microphone input formats the iPhone treats the receiver as having no car audio
         // and keeps every sound on the phone.
         microphone = true,
-    )
-
-    private fun identification(deviceId: String) = Iap2IdentificationConfig(
-        name = DEVICE_NAME,
-        modelIdentifier = DEVICE_NAME,
-        manufacturer = DEVICE_NAME,
-        serialNumber = "OPENPLAY-" + deviceId.replace(":", ""),
-        firmwareVersion = "0.1.0",
-        hardwareVersion = "1.0",
-        carPlayUsbInterfaceNumber = 0,
     )
 
     private fun endpoint(
@@ -240,6 +237,36 @@ class WirelessReceiver(
             } ?: throw IOException("Wi-Fi adapter '${wlan.description}' not found")
             return adapter.inetAddresses.toList().firstOrNull { it is Inet4Address && !it.isLoopbackAddress }
                 ?: throw IOException("Wi-Fi adapter '${wlan.description}' has no IPv4 address")
+        }
+
+        /** The accessory identity sent on both iAP2 links; [deviceId] is the AirPlay device id. */
+        internal fun identification(deviceId: String) = Iap2IdentificationConfig(
+            name = DEVICE_NAME,
+            modelIdentifier = DEVICE_NAME,
+            manufacturer = DEVICE_NAME,
+            serialNumber = "OPENPLAY-" + deviceId.replace(":", ""),
+            firmwareVersion = "0.1.0",
+            hardwareVersion = "1.0",
+            carPlayUsbInterfaceNumber = 0,
+        )
+
+        /**
+         * Identification for one wireless link. With [vehicleData] the simulated EV (vehicle status,
+         * location, wheel speed) is declared, which [forWirelessLink] keeps off the Bluetooth
+         * bootstrap; without it both links carry exactly the plain identity as before.
+         */
+        internal fun linkIdentification(
+            base: Iap2IdentificationConfig,
+            role: Iap2WirelessLinkRole,
+            wireless: Iap2WirelessIdentification,
+            vehicleData: Boolean,
+        ): Iap2IdentificationConfig {
+            val declared = if (vehicleData) {
+                base.copy(locationInformationEnabled = true, vehicleStatusEnabled = true, vehicleSpeedEnabled = true)
+            } else {
+                base
+            }
+            return declared.forWirelessLink(role, wireless)
         }
     }
 }
