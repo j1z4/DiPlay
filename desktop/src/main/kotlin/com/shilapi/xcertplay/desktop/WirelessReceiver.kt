@@ -44,6 +44,8 @@ class WirelessReceiver(
     private val media: AirPlayMediaHandler,
     private val events: ReceiverEvents,
     private val log: (String) -> Unit,
+    /** The simulated car declared to the iPhone; null keeps vehicle data off. */
+    private val vehicle: SimulatedVehicle? = null,
 ) : Closeable {
     private val tunnelExecutor = Executors.newSingleThreadExecutor { Thread(it, "iap2-tunnel").apply { isDaemon = true } }
     private val handoffRequested = AtomicBoolean(false)
@@ -83,8 +85,6 @@ class WirelessReceiver(
         val base = identification(config.deviceId, settings.advanced)
         val endpoint = endpoint(wlan, host, port, config, identity.publicKeyHex)
         val mfiClient = Iap2MfiAuthenticationClient(mfi)
-        // One car for the whole run: its battery keeps draining across tunnel reconnects.
-        val vehicle = if (settings.vehicleData) SimulatedVehicle.configured(settings.advanced, log) else null
         media.setIapTunnelHandler { stream ->
             val identification = linkIdentification(base, Iap2WirelessLinkRole.RUNTIME_TUNNEL, wireless, settings.vehicleData)
             startTunnel(stream, identification, endpoint, mfiClient, vehicle)

@@ -35,7 +35,7 @@ class VideoWindow(
     title: String = APP_NAME,
     scaling: String = SettingsSchema.SCALING.default,
     private val keepAspect: Boolean = true,
-) : VideoSurface {
+) : ClusterSurface {
     private val interpolation = interpolationHint(scaling)
     @Volatile private var image: BufferedImage? = null
     @Volatile private var status: String = "Starting $title"
@@ -74,8 +74,14 @@ class VideoWindow(
         panel.repaint()
     }
 
+    /** As the map-only cluster: directly under the CarPlay window. */
+    override fun open(below: VideoWindow) = show(below)
+
+    /** Where this window is on screen while it is a visible window (not fullscreen); call on the event thread. */
+    internal fun visibleBounds(): Rectangle? = frame.takeIf { !fullscreen && it.isVisible }?.bounds
+
     /** Closes the window; its windowClosed listener still runs onClose. */
-    fun close() = SwingUtilities.invokeLater { frame.dispose() }
+    override fun close() = SwingUtilities.invokeLater { frame.dispose() }
 
     /** Back to the waiting screen when the session ends. */
     override fun clearVideo() {
@@ -84,7 +90,7 @@ class VideoWindow(
     }
 
     private fun place(below: VideoWindow?) {
-        val anchor = below?.takeIf { !it.fullscreen && it.frame.isVisible }?.frame?.bounds
+        val anchor = below?.visibleBounds()
         if (anchor == null) frame.setLocationRelativeTo(null) else frame.setLocation(anchor.x, anchor.y + anchor.height)
     }
 

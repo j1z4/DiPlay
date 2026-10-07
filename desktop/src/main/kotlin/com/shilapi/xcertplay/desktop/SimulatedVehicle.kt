@@ -31,8 +31,8 @@ class SimulatedVehicle(
     private val startPercent: Double = START_PERCENT,
     private val drainPercentPerHour: Double = DRAIN_PERCENT_PER_HOUR,
     private val fullRangeKm: Int = MAX_RANGE_KM,
-    private val charging: Boolean = false,
-    private val speedKmh: Int = CRUISE_KMH,
+    val charging: Boolean = false,
+    val speedKmh: Int = CRUISE_KMH,
     private val centerLatitude: Double = CENTER_LATITUDE,
     private val centerLongitude: Double = CENTER_LONGITUDE,
     private val loopRadiusMeters: Double = LOOP_RADIUS_METERS,
@@ -44,6 +44,8 @@ class SimulatedVehicle(
     /** One clockwise lap of the loop at cruise speed, or 0 when the car stands still. */
     val lapMillis: Long =
         if (speedKmh > 0) (2 * PI * loopRadiusMeters / metersPerSecond * 1000).roundToLong() else 0L
+    /** What the drain costs the battery while driving, in kW; 0 when parked. */
+    val powerKw: Double = if (speedKmh > 0) drainPercentPerHour / 100 * MAX_CHARGE_WH / WATTS_PER_KILOWATT else 0.0
     @Volatile private var started = false
     @Volatile private var speedRequested = false
     private var nextLogMillis = startMillis
@@ -128,6 +130,9 @@ class SimulatedVehicle(
         return VehicleSpeedReading(VehicleGear.DRIVE, samples)
     }
 
+    /** How far the car has driven since construction, in km. */
+    fun distanceKm(): Double = speedKmh * elapsedMillis() / MILLIS_PER_HOUR
+
     private fun elapsedMillis(): Long = (clock() - startMillis).coerceAtLeast(0)
 
     private fun logProgress(now: Long, fix: CarPlayLocationFix) {
@@ -154,6 +159,7 @@ class SimulatedVehicle(
         const val CENTER_LONGITUDE = -122.00900
         private const val METERS_PER_SECOND_PER_KMH = 3.6
         private const val MILLIS_PER_HOUR = 3_600_000.0
+        private const val WATTS_PER_KILOWATT = 1000.0
         private const val ALTITUDE_METERS = 72.0
         private const val ACCURACY_METERS = 5.0
         private const val EARTH_RADIUS_METERS = 6_371_000.0

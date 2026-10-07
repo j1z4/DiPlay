@@ -15,11 +15,13 @@ import java.io.File
 class ClusterDisplayTest {
     private val settings = DesktopSettings("00:11:22:33:44:55", "", File("offline-mfi"), 1280, 720, 60)
 
+    private val mapStyle = SettingsValues.DEFAULTS.with(SettingsSchema.CLUSTER_STYLE, "map")
+
     private fun config(settings: DesktopSettings) =
         WirelessReceiver.airPlayConfig(settings, "02:00:00:00:00:01", "AA:BB:CC:DD:EE:FF")
 
-    @Test fun defaultClusterIsAnInputLessPanelShowingMapAndTurnCard() {
-        val display = ClusterDisplay.config(SettingsValues.DEFAULTS)
+    @Test fun mapStyleClusterIsAnInputLessPanelShowingMapAndTurnCard() {
+        val display = ClusterDisplay.config(mapStyle)
 
         assertEquals(1280, display.widthPixels)
         assertEquals(480, display.heightPixels)
@@ -33,7 +35,7 @@ class ClusterDisplayTest {
     }
 
     @Test fun clusterSettingsPickSizeFrameRateAndStartContent() {
-        val values = SettingsValues.DEFAULTS
+        val values = mapStyle
             .with(SettingsSchema.CLUSTER_WIDTH, 1920)
             .with(SettingsSchema.CLUSTER_HEIGHT, 720)
             .with(SettingsSchema.CLUSTER_FPS, 20)
@@ -49,7 +51,7 @@ class ClusterDisplayTest {
     }
 
     @Test fun windowFollowsTheStreamWhichRoundsToMultiplesOfEight() {
-        val values = SettingsValues.DEFAULTS
+        val values = mapStyle
             .with(SettingsSchema.CLUSTER_WIDTH, 1000)
             .with(SettingsSchema.CLUSTER_HEIGHT, 300)
 

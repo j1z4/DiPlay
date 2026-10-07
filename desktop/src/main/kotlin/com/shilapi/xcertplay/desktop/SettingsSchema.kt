@@ -115,11 +115,25 @@ object SettingsSchema {
     val KEEP_ASPECT = Setting("video.keepAspect", VIDEO, "Display", "Keep aspect ratio (black bars)", true, SettingType.Bool)
 
     // Cluster
-    val CLUSTER_WIDTH = Setting("cluster.width", CLUSTER, "Cluster display", "Width", 1280, SettingType.Whole(320, 3840, 2, "px"))
-    val CLUSTER_HEIGHT = Setting("cluster.height", CLUSTER, "Cluster display", "Height", 480, SettingType.Whole(240, 2160, 2, "px"))
-    val CLUSTER_FPS = Setting("cluster.fps", CLUSTER, "Cluster display", "Frame rate", 30, SettingType.Whole(10, 60, 5, "fps"))
-    val CLUSTER_CONTENT = Setting("cluster.content", CLUSTER, "Cluster display", "Content at start", "instruments",
+    val CLUSTER_STYLE = Setting("cluster.style", CLUSTER, "Cluster display", "Style", "gauges",
+        SettingType.Choice(listOf("gauges" to "Gauges with the iPhone map in the middle", "map" to "iPhone map only")),
+        "The iPhone offers only Apple Maps content for the cluster; OpenPlay draws the gauges around it, as cars do. " +
+            "The dials always show the car from the Vehicle tab, even with vehicle data off.")
+    val CLUSTER_FPS = Setting("cluster.fps", CLUSTER, "Cluster display", "Map frame rate", 30, SettingType.Whole(10, 60, 5, "fps"))
+    val CLUSTER_CONTENT = Setting("cluster.content", CLUSTER, "Cluster display", "Map content at start", "instruments",
         SettingType.Choice(listOf("instruments" to "Map and turn card", "map" to "Map only", "turncard" to "Turn card only")))
+    val CLUSTER_PANEL_WIDTH = Setting("cluster.panelWidth", CLUSTER, "Gauges style", "Panel width", 1920,
+        SettingType.Whole(640, 3840, 8, "px"))
+    val CLUSTER_PANEL_HEIGHT = Setting("cluster.panelHeight", CLUSTER, "Gauges style", "Panel height", 720,
+        SettingType.Whole(240, 2160, 8, "px"))
+    val CLUSTER_MAP_SHARE = Setting("cluster.mapShare", CLUSTER, "Gauges style", "Map window width", 34, SettingType.Whole(20, 60, 1, "%"),
+        "How much of the panel's width the iPhone map takes between the two dials.")
+    val CLUSTER_UNITS = Setting("cluster.units", CLUSTER, "Gauges style", "Units", "imperial",
+        SettingType.Choice(listOf("imperial" to "mph, miles, °F", "metric" to "km/h, km, °C")))
+    val CLUSTER_ACCENT = Setting("cluster.accent", CLUSTER, "Gauges style", "Accent colour", "teal",
+        SettingType.Choice(listOf("teal" to "Teal", "amber" to "Amber", "red" to "Red", "blue" to "Blue", "white" to "White")))
+    val CLUSTER_WIDTH = Setting("cluster.width", CLUSTER, "Map-only style", "Width", 1280, SettingType.Whole(320, 3840, 2, "px"))
+    val CLUSTER_HEIGHT = Setting("cluster.height", CLUSTER, "Map-only style", "Height", 480, SettingType.Whole(240, 2160, 2, "px"))
 
     // Simulated vehicle
     val BATTERY_START = Setting("vehicle.batteryStartPercent", VEHICLE, "Battery", "Charge at start", 62.0,
@@ -134,6 +148,10 @@ object SettingsSchema {
         SettingType.Decimal(-180.0, 180.0, 0.001, "°"))
     val LOOP_METERS = Setting("vehicle.loopMeters", VEHICLE, "Driving", "Loop radius", 500, SettingType.Whole(100, 20_000, 100, "m"),
         "The simulated car circles a loop of this radius around the centre.")
+    val OUTSIDE_TEMP_C = Setting("vehicle.outsideTempC", VEHICLE, "Cluster readouts", "Outside temperature", 22,
+        SettingType.Whole(-40, 55, 1, "°C"))
+    val ODOMETER_START_KM = Setting("vehicle.odometerStartKm", VEHICLE, "Cluster readouts", "Odometer at start", 2012,
+        SettingType.Whole(0, 999_999, 100, "km"))
 
     // Diagnostics
     val LOG_LEVEL = Setting("diagnostics.logLevel", DIAGNOSTICS, "Logging", "Detail", "info",
@@ -146,8 +164,11 @@ object SettingsSchema {
         AIRPLAY_PORT, BLUETOOTH_ATTEMPTS, BLUETOOTH_RETRY_SECONDS, BOOTSTRAP_TIMEOUT_SECONDS,
         AUDIO_ENABLED, AUDIO_BUFFER_MILLIS, MICROPHONE_ENABLED, MICROPHONE_BITRATE,
         DECODER_THREADS, DECODE_QUEUE_FRAMES, SCALING, KEEP_ASPECT,
-        CLUSTER_WIDTH, CLUSTER_HEIGHT, CLUSTER_FPS, CLUSTER_CONTENT,
+        CLUSTER_STYLE, CLUSTER_FPS, CLUSTER_CONTENT,
+        CLUSTER_PANEL_WIDTH, CLUSTER_PANEL_HEIGHT, CLUSTER_MAP_SHARE, CLUSTER_UNITS, CLUSTER_ACCENT,
+        CLUSTER_WIDTH, CLUSTER_HEIGHT,
         BATTERY_START, BATTERY_DRAIN, FULL_RANGE_KM, CHARGING, SPEED_KMH, CENTER_LATITUDE, CENTER_LONGITUDE, LOOP_METERS,
+        OUTSIDE_TEMP_C, ODOMETER_START_KM,
         LOG_LEVEL, LOG_FILES,
     )
 

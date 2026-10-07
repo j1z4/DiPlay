@@ -72,6 +72,9 @@ class CarPlaySession(
 
     private inner class Run(private val settings: DesktopSettings) {
         private val airPlay = AtomicReference<AirPlaySession?>(null)
+        // One car for the whole run, shared by the iPhone's vehicle data and the cluster dials:
+        // its battery keeps draining across tunnel reconnects.
+        private val vehicle = SimulatedVehicle.configured(settings.advanced, log)
         private val window = VideoWindow(
             fullscreen = settings.fullscreen,
             windowSize = Dimension(settings.width, settings.height),
@@ -81,13 +84,21 @@ class CarPlaySession(
             keepAspect = settings.advanced[SettingsSchema.KEEP_ASPECT],
         )
         // The cluster has no input and is never the kiosk surface; closing it leaves the run going.
-        private val clusterWindow = if (!settings.clusterDisplay) null else VideoWindow(
-            fullscreen = false,
-            windowSize = ClusterDisplay.windowSize(settings.advanced),
-            onTouch = {},
-            onClose = {},
-            title = ClusterDisplay.WINDOW_TITLE,
-        )
+        private val clusterWindow: ClusterSurface? = when {
+            !settings.clusterDisplay -> null
+            ClusterDisplay.drawsGauges(settings.advanced) -> InstrumentClusterWindow(
+                panelSize = ClusterDisplay.windowSize(settings.advanced),
+                painter = InstrumentPanelPainter(settings.advanced),
+                readings = { ClusterReadings.of(vehicle, settings.advanced) },
+            )
+            else -> VideoWindow(
+                fullscreen = false,
+                windowSize = ClusterDisplay.windowSize(settings.advanced),
+                onTouch = {},
+                onClose = {},
+                title = ClusterDisplay.WINDOW_TITLE,
+            )
+        }
         val hasCluster: Boolean get() = clusterWindow != null
 
         fun session(): AirPlaySession? = airPlay.get()
@@ -115,11 +126,12 @@ class CarPlaySession(
                 }
             },
             log = log,
+            vehicle = vehicle.takeIf { settings.vehicleData },
         )
 
         fun start() {
             window.show()
-            clusterWindow?.show(below = window)
+            clusterWindow?.open(below = window)
             thread(name = "openplay-bootstrap", isDaemon = true) {
                 try {
                     receiver.run()

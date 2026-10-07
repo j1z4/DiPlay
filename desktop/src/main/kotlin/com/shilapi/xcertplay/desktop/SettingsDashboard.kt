@@ -283,7 +283,7 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
         row(*clusterContentButtons.toTypedArray()),
         row(*clusterViewButtons.toTypedArray()),
         clusterStatus,
-        hint("Switches the connected iPhone's cluster without reconnecting; \"Content at start\" picks the first view."),
+        hint("Switches the connected iPhone's cluster without reconnecting; \"Map content at start\" picks the first view."),
     )
 
     /** A live-control button: the command runs off the EDT and its result lands in [clusterStatus]. */
