@@ -11,15 +11,18 @@ import javax.swing.SwingUtilities
  * `--snapshot <file.png>` renders the dashboard off-screen to a PNG and exits.
  */
 fun main(args: Array<String>) {
-    val log: (String) -> Unit = { println("${LocalTime.now()} $it") }
     val store = DesktopStore()
+    val logFile = FileLogging.install(store.root)
+    val log: (String) -> Unit = { println("${LocalTime.now()} $it") }
+    log("$APP_NAME starting; log ${logFile.absolutePath}")
     val settings = store.loadSettings()
     val snapshot = args.indexOf("--snapshot").takeIf { it >= 0 }?.let { args.getOrNull(it + 1) }
     SwingUtilities.invokeLater {
         if (windowsUsesDarkTheme()) FlatDarkLaf.setup() else FlatLightLaf.setup()
         val dashboard = SettingsDashboard(store, log)
         if (snapshot != null) {
-            dashboard.snapshot(java.io.File(snapshot))
+            val tab = args.getOrNull(args.indexOf("--snapshot") + 2)?.toIntOrNull() ?: 0
+            dashboard.snapshot(java.io.File(snapshot), tab)
             Runtime.getRuntime().halt(0)
         }
         dashboard.show(startNow = settings.autoStart && settings.problems().isEmpty())

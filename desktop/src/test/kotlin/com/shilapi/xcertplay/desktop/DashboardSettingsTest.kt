@@ -48,6 +48,32 @@ class DashboardSettingsTest {
         assertTrue(DesktopSettings("00:11:22:33:44:55", "", identity, 1280, 720, 60).problems().isEmpty())
     }
 
+    @Test fun granularSettingsFallBackToDefaultsAndRoundTrip() {
+        val store = DesktopStore(temp.newFolder("granular"))
+        val custom = SettingsValues.DEFAULTS
+            .with(SettingsSchema.AUDIO_BUFFER_MILLIS, 250)
+            .with(SettingsSchema.NIGHT_MODE, "night")
+            .with(SettingsSchema.CENTER_LATITUDE, 41.88)
+            .with(SettingsSchema.DEVICE_NAME, "Test Car")
+        val saved = DesktopSettings("00:11:22:33:44:55", "", File(temp.root, "id"), 1280, 720, 60, advanced = custom)
+
+        store.saveSettings(saved)
+        val loaded = store.loadSettings().advanced
+
+        assertEquals(250, loaded[SettingsSchema.AUDIO_BUFFER_MILLIS])
+        assertEquals("night", loaded[SettingsSchema.NIGHT_MODE])
+        assertEquals(41.88, loaded[SettingsSchema.CENTER_LATITUDE], 1e-9)
+        assertEquals("Test Car", loaded[SettingsSchema.DEVICE_NAME])
+        assertEquals(SettingsSchema.AIRPLAY_PORT.default, loaded[SettingsSchema.AIRPLAY_PORT])
+    }
+
+    @Test fun invalidGranularValuesUseTheDefault() {
+        val values = SettingsValues(mapOf("audio.bufferMillis" to "5", "carplay.nightMode" to "purple"))
+
+        assertEquals(120, values[SettingsSchema.AUDIO_BUFFER_MILLIS])
+        assertEquals("system", values[SettingsSchema.NIGHT_MODE])
+    }
+
     @Test fun settingsSurviveSaveAndLoad() {
         val store = DesktopStore(temp.newFolder("OpenPlay"))
         val saved = DesktopSettings(

@@ -26,6 +26,8 @@ data class DesktopSettings(
     val clusterDisplay: Boolean = false,
     /** Experimental: send simulated vehicle status (EV range/charge) and location over the tunnel. */
     val vehicleData: Boolean = false,
+    /** Every granular setting declared in [SettingsSchema]. */
+    val advanced: SettingsValues = SettingsValues.DEFAULTS,
 ) {
     /** What still has to be filled in before CarPlay can start; empty when ready. */
     fun problems(): List<String> = buildList {
@@ -98,6 +100,9 @@ class DesktopStore(val root: File = defaultRoot()) {
             autoStart = text("autoStart").toBoolean(),
             clusterDisplay = text("clusterDisplay").toBoolean(),
             vehicleData = text("vehicleData").toBoolean(),
+            advanced = SettingsValues(
+                SettingsSchema.ALL.mapNotNull { setting -> values.getProperty(setting.key)?.let { setting.key to it } }.toMap(),
+            ),
         )
     }
 
@@ -115,6 +120,7 @@ class DesktopStore(val root: File = defaultRoot()) {
             setProperty("autoStart", settings.autoStart.toString())
             setProperty("clusterDisplay", settings.clusterDisplay.toString())
             setProperty("vehicleData", settings.vehicleData.toString())
+            settings.advanced.entries().forEach { (key, value) -> setProperty(key, value) }
         })
     }
 

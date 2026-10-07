@@ -22,6 +22,7 @@ import javax.swing.JPanel
 import javax.swing.JPasswordField
 import javax.swing.JScrollPane
 import javax.swing.JSpinner
+import javax.swing.JTabbedPane
 import javax.swing.JTextField
 import javax.swing.JToggleButton
 import javax.swing.SpinnerNumberModel
@@ -57,6 +58,7 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
     private val autoStart = JCheckBox("Start CarPlay automatically when OpenPlay opens")
     private val cluster = JCheckBox("Instrument cluster display (second screen)")
     private val vehicleData = JCheckBox("Simulated vehicle data (EV range, charging, speed, location)")
+    private val generated = GeneratedSettingsTabs()
 
     private val frame = JFrame("$APP_NAME Dashboard").apply {
         defaultCloseOperation = WindowConstants.DISPOSE_ON_CLOSE
@@ -69,7 +71,7 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
     }
 
     fun show(startNow: Boolean) {
-        frame.contentPane = JScrollPane(content()).apply { border = null }
+        frame.contentPane = content()
         frame.minimumSize = Dimension(MIN_WIDTH, MIN_HEIGHT)
         frame.pack()
         frame.setLocationRelativeTo(null)
@@ -81,8 +83,9 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
     }
 
     /** Renders the dashboard off-screen into a PNG (visual checks; no window is shown). */
-    fun snapshot(target: File) {
-        frame.contentPane = JScrollPane(content()).apply { border = null }
+    fun snapshot(target: File, tabIndex: Int = 0) {
+        frame.contentPane = content()
+        (frame.contentPane.components.firstOrNull { it is JTabbedPane } as? JTabbedPane)?.selectedIndex = tabIndex
         load(store.loadSettings())
         refreshDevices()
         wifiNetwork.text = runCatching { WindowsWlanInfo.current() }.getOrNull()
@@ -97,10 +100,25 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
         frame.dispose()
     }
 
-    private fun content(): JComponent = JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+    /** Header (status, Start/Stop), tabs (General plus one per schema tab), footer (Save). */
+    private fun content(): JComponent = JPanel(BorderLayout()).apply {
         border = BorderFactory.createEmptyBorder(PAD, PAD, PAD, PAD)
-        add(header())
+        add(header(), BorderLayout.NORTH)
+        add(JTabbedPane().apply {
+            addTab("General", scrolling(generalTab()))
+            SettingsSchema.TABS.forEach { name -> addTab(name, scrolling(generated.tab(name))) }
+        }, BorderLayout.CENTER)
+        add(footer(), BorderLayout.SOUTH)
+    }
+
+    private fun scrolling(content: JComponent) = JScrollPane(content).apply {
+        border = null
+        verticalScrollBar.unitIncrement = SCROLL_STEP
+    }
+
+    private fun generalTab(): JComponent = JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        border = BorderFactory.createEmptyBorder(GAP, 0, 0, 0)
         add(section("iPhone", row(iphone, button("Refresh") { refreshDevices() }),
             hint("Pair the iPhone in Windows Settings > Bluetooth & devices first.")))
         add(section("Wi-Fi", wifiNetwork, row(JLabel("Password"), passphrase, showToggle()),
@@ -110,7 +128,6 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
             row(JLabel("Frame rate"), fps), fullscreen, autoStart))
         add(section("Experimental: CarPlay Ultra", cluster, vehicleData,
             hint("Next-generation CarPlay building blocks. Full CarPlay Ultra is limited by Apple to approved vehicles.")))
-        add(footer())
         // BoxLayout lines children up by alignmentX; left-align all and let them span the width.
         components.forEach { child ->
             (child as JComponent).alignmentX = JComponent.LEFT_ALIGNMENT
@@ -170,6 +187,7 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
             autoStart = autoStart.isSelected,
             clusterDisplay = cluster.isSelected,
             vehicleData = vehicleData.isSelected,
+            advanced = generated.read(),
         )
     }
 
@@ -187,6 +205,7 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
         autoStart.isSelected = settings.autoStart
         cluster.isSelected = settings.clusterDisplay
         vehicleData.isSelected = settings.vehicleData
+        generated.load(settings.advanced)
         iphone.putClientProperty(SAVED_ADDRESS, settings.iphoneAddress)
         updateIdentityStatus()
     }
@@ -278,6 +297,7 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
         const val TITLE_SIZE = 24f
         const val STATUS_DOT_SIZE = 18f
         const val SAVED_ADDRESS = "openplay.savedAddress"
+        const val SCROLL_STEP = 16
         /** Snapshots never show the real Wi-Fi password, even masked. */
         const val PASSWORD_PLACEHOLDER = "placeholder"
         val OK_COLOR = Color(0x2E, 0xA0, 0x43)
