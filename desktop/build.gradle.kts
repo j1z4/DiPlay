@@ -64,4 +64,35 @@ dependencies {
 
 application {
     mainClass.set("com.shilapi.xcertplay.desktop.OpenPlayKt")
+    applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
+}
+
+// Standalone Windows app folder (OpenPlay.exe plus a private Java runtime) via jpackage.
+// The accessory identity is not bundled; settings.properties points at it.
+val packageInput = layout.buildDirectory.dir("package-input")
+
+val stagePackageInput by tasks.registering(Sync::class) {
+    from(tasks.jar)
+    from(configurations.runtimeClasspath)
+    into(packageInput)
+}
+
+val packageOpenPlay by tasks.registering(Exec::class) {
+    group = "distribution"
+    description = "Builds build/package/OpenPlay with OpenPlay.exe and a bundled runtime."
+    dependsOn(stagePackageInput)
+    val output = layout.buildDirectory.dir("package").get().asFile
+    doFirst { output.resolve("OpenPlay").deleteRecursively() }
+    executable = File(System.getProperty("java.home"), "bin/jpackage.exe").absolutePath
+    args(
+        "--type", "app-image",
+        "--name", "OpenPlay",
+        "--app-version", "0.1.0",
+        "--vendor", "OpenPlay",
+        "--input", packageInput.get().asFile.absolutePath,
+        "--main-jar", tasks.jar.get().archiveFileName.get(),
+        "--main-class", application.mainClass.get(),
+        "--java-options", "--enable-native-access=ALL-UNNAMED",
+        "--dest", output.absolutePath,
+    )
 }
