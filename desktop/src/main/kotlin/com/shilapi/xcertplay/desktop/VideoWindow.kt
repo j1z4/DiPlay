@@ -67,6 +67,9 @@ class VideoWindow(
         panel.repaint()
     }
 
+    /** Closes the window; its windowClosed listener still runs onClose. */
+    fun close() = SwingUtilities.invokeLater { frame.dispose() }
+
     /** Back to the waiting screen when the session ends. */
     fun clearVideo() {
         image = null

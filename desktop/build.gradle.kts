@@ -54,6 +54,8 @@ dependencies {
     implementation("org.jmdns:jmdns:3.6.3")
     implementation("net.java.dev.jna:jna:5.17.0")
     implementation("net.java.dev.jna:jna-platform:5.17.0")
+    // Modern look for the dashboard.
+    implementation("com.formdev:flatlaf:3.6")
     // FFmpeg decoding through JavaCPP; ship only the Windows x64 natives.
     implementation("org.bytedeco:ffmpeg:7.1-1.5.11")
     implementation("org.bytedeco:javacpp:1.5.11")

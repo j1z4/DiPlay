@@ -20,7 +20,27 @@ data class DesktopSettings(
     val fps: Int,
     /** Kiosk mode for an in-car PC; windowed by default. */
     val fullscreen: Boolean = false,
-)
+    /** Start CarPlay as soon as OpenPlay opens (in-car use) instead of waiting on the dashboard. */
+    val autoStart: Boolean = false,
+    /** Experimental: advertise a second (instrument cluster) display to the iPhone. */
+    val clusterDisplay: Boolean = false,
+    /** Experimental: send simulated vehicle status (EV range/charge) and location over the tunnel. */
+    val vehicleData: Boolean = false,
+) {
+    /** What still has to be filled in before CarPlay can start; empty when ready. */
+    fun problems(): List<String> = buildList {
+        if (!BLUETOOTH_ADDRESS.matches(iphoneAddress)) add("Choose the paired iPhone")
+        if (!File(mfiDirectory, "identity.pk8").isFile || !File(mfiDirectory, "certificate.p7b").isFile) {
+            add("Choose the folder with identity.pk8 and certificate.p7b")
+        }
+        if (width < MIN_SIDE || height < MIN_SIDE) add("Resolution must be at least ${MIN_SIDE}x$MIN_SIDE")
+    }
+
+    private companion object {
+        val BLUETOOTH_ADDRESS = Regex("^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
+        const val MIN_SIDE = 320
+    }
+}
 
 /**
  * File-backed state for the Windows receiver under %APPDATA%\OpenPlay: the AirPlay identity the
@@ -62,20 +82,40 @@ class DesktopStore(val root: File = defaultRoot()) {
         return store
     }
 
-    /** Reads settings.properties; missing required values produce a message naming the file. */
+    /** Reads settings.properties, filling defaults; check [DesktopSettings.problems] before starting. */
     fun loadSettings(): DesktopSettings {
         val values = read(settingsFile)
-        fun required(key: String): String = values.getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
-            ?: throw IllegalStateException("Set '$key' in ${settingsFile.absolutePath}")
+        fun text(key: String) = values.getProperty(key)?.trim().orEmpty()
+        fun number(key: String, default: Int) = text(key).toIntOrNull() ?: default
         return DesktopSettings(
-            iphoneAddress = required("iphoneAddress"),
+            iphoneAddress = text("iphoneAddress").uppercase(),
             wifiPassphrase = values.getProperty("wifiPassphrase").orEmpty(),
-            mfiDirectory = File(required("mfiDirectory")),
-            width = values.getProperty("width")?.toIntOrNull() ?: DEFAULT_WIDTH,
-            height = values.getProperty("height")?.toIntOrNull() ?: DEFAULT_HEIGHT,
-            fps = values.getProperty("fps")?.toIntOrNull() ?: DEFAULT_FPS,
-            fullscreen = values.getProperty("fullscreen")?.trim().toBoolean(),
+            mfiDirectory = File(text("mfiDirectory").ifEmpty { File(root, "offline-mfi").path }),
+            width = number("width", DEFAULT_WIDTH),
+            height = number("height", DEFAULT_HEIGHT),
+            fps = number("fps", DEFAULT_FPS),
+            fullscreen = text("fullscreen").toBoolean(),
+            autoStart = text("autoStart").toBoolean(),
+            clusterDisplay = text("clusterDisplay").toBoolean(),
+            vehicleData = text("vehicleData").toBoolean(),
         )
+    }
+
+    /** Persists the dashboard's settings. */
+    @Synchronized
+    fun saveSettings(settings: DesktopSettings) {
+        write(settingsFile, Properties().apply {
+            setProperty("iphoneAddress", settings.iphoneAddress)
+            setProperty("wifiPassphrase", settings.wifiPassphrase)
+            setProperty("mfiDirectory", settings.mfiDirectory.path)
+            setProperty("width", settings.width.toString())
+            setProperty("height", settings.height.toString())
+            setProperty("fps", settings.fps.toString())
+            setProperty("fullscreen", settings.fullscreen.toString())
+            setProperty("autoStart", settings.autoStart.toString())
+            setProperty("clusterDisplay", settings.clusterDisplay.toString())
+            setProperty("vehicleData", settings.vehicleData.toString())
+        })
     }
 
     @Synchronized
