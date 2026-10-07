@@ -15,6 +15,8 @@ data class DesktopSettings(
     val width: Int,
     val height: Int,
     val fps: Int,
+    /** Kiosk mode for an in-car PC; windowed by default. */
+    val fullscreen: Boolean = false,
 )
 
 /**
@@ -69,6 +71,7 @@ class DesktopStore(val root: File = defaultRoot()) {
             width = values.getProperty("width")?.toIntOrNull() ?: DEFAULT_WIDTH,
             height = values.getProperty("height")?.toIntOrNull() ?: DEFAULT_HEIGHT,
             fps = values.getProperty("fps")?.toIntOrNull() ?: DEFAULT_FPS,
+            fullscreen = values.getProperty("fullscreen")?.trim().toBoolean(),
         )
     }
 

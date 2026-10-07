@@ -1,34 +1,13 @@
 package com.shilapi.xcertplay.desktop
 
+import com.shilapi.xcertplay.airplay.AirPlaySession
 import com.shilapi.xcertplay.airplay.CarPlayMediaEngine
-import com.shilapi.xcertplay.airplay.MediaSink
-import com.shilapi.xcertplay.airplay.VideoCodec
+import java.awt.Dimension
 import java.time.LocalTime
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.concurrent.thread
 import kotlin.system.exitProcess
-
-/** Counts decoded-video input until the desktop renderer exists; proves frames reach Windows. */
-class CountingMediaSink(private val log: (String) -> Unit) : MediaSink {
-    private val frames = AtomicLong()
-    private val bytes = AtomicLong()
-
-    override fun onVideoCodec(type: Int, codec: VideoCodec) = log("video stream $type codec=$codec")
-
-    override fun onVideoConfig(type: Int, codecData: ByteArray) = log("video stream $type config bytes=${codecData.size}")
-
-    override fun onVideoFrame(type: Int, naluBytes: ByteArray) {
-        val count = frames.incrementAndGet()
-        val total = bytes.addAndGet(naluBytes.size.toLong())
-        if (count == 1L || count % FRAME_LOG_INTERVAL == 0L) log("video stream $type frames=$count bytes=$total")
-    }
-
-    override fun onScreenStreamActive(type: Int, active: Boolean) = log("video stream $type active=$active")
-
-    private companion object {
-        const val FRAME_LOG_INTERVAL = 300L
-    }
-}
 
 private val SETTINGS_TEMPLATE = """
     # DiPlay for Windows settings
@@ -41,6 +20,8 @@ private val SETTINGS_TEMPLATE = """
     width=1280
     height=720
     fps=60
+    # true for a borderless fullscreen kiosk (in-car PC); false opens a normal window.
+    fullscreen=false
 """.trimIndent()
 
 fun main() {
@@ -56,24 +37,43 @@ fun main() {
     }
 
     val log: (String) -> Unit = { println("${LocalTime.now()} $it") }
+    val stopped = CountDownLatch(1)
+    val activeSession = AtomicReference<AirPlaySession?>(null)
+
+    val window = VideoWindow(
+        fullscreen = settings.fullscreen,
+        windowSize = Dimension(settings.width, settings.height),
+        onTouch = { contacts -> activeSession.get()?.sendTouch(contacts) },
+        onClose = { stopped.countDown() },
+    )
+    val sink = DesktopMediaSink(window, log)
     val receiver = WirelessReceiver(
         settings = settings,
         store = store,
-        media = CarPlayMediaEngine(CountingMediaSink(log)),
-        events = object : ReceiverEvents {},
+        media = CarPlayMediaEngine(sink),
+        events = object : ReceiverEvents {
+            override fun onStatus(message: String) = window.setStatus(message)
+            override fun onSessionActive(session: AirPlaySession) = activeSession.set(session)
+            override fun onSessionEnded() {
+                activeSession.set(null)
+                window.clearVideo()
+            }
+        },
         log = log,
     )
-    val stopped = CountDownLatch(1)
-    Runtime.getRuntime().addShutdownHook(Thread {
-        receiver.close()
-        stopped.countDown()
-    })
-    try {
-        receiver.run()
-    } catch (error: Exception) {
-        log("receiver failed: ${error.message}")
-        exitProcess(1)
+
+    window.show()
+    thread(name = "diplay-bootstrap", isDaemon = true) {
+        try {
+            receiver.run()
+        } catch (error: Exception) {
+            log("receiver failed: ${error.message}")
+            window.setStatus("Could not start CarPlay: ${error.message}")
+        }
     }
-    log("receiver running; press Ctrl+C to stop")
+    Runtime.getRuntime().addShutdownHook(Thread { stopped.countDown() })
     stopped.await()
+    receiver.close()
+    sink.close()
+    exitProcess(0)
 }

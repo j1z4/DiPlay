@@ -25,6 +25,7 @@ val syncSharedSources by tasks.registering(Sync::class) {
             "com/shilapi/xcertplay/network/WirelessStartupPolicy.kt",
             "com/shilapi/xcertplay/orchestration/FirstTcpWatchdog.kt",
             "com/shilapi/xcertplay/media/TouchLatencyProbe.kt",
+            "com/shilapi/xcertplay/media/MediaCodecSupport.kt",
         )
         exclude(
             // USB-only; depends on the Android USB host stack.
@@ -53,6 +54,11 @@ dependencies {
     implementation("org.jmdns:jmdns:3.6.3")
     implementation("net.java.dev.jna:jna:5.17.0")
     implementation("net.java.dev.jna:jna-platform:5.17.0")
+    // FFmpeg decoding through JavaCPP; ship only the Windows x64 natives.
+    implementation("org.bytedeco:ffmpeg:7.1-1.5.11")
+    implementation("org.bytedeco:javacpp:1.5.11")
+    runtimeOnly("org.bytedeco:ffmpeg:7.1-1.5.11:windows-x86_64")
+    runtimeOnly("org.bytedeco:javacpp:1.5.11:windows-x86_64")
     testImplementation("junit:junit:4.13.2")
 }
 
