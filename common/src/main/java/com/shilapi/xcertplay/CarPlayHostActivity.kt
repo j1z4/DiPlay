@@ -106,7 +106,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 /**
- * Full-screen CarPlay host. It renders decoded video through a [TextureView], forwards touch to
+ * Full-screen CarPlay host. It renders decoded video through a [TextureView] (a [SurfaceView] when
+ * [DirectVideoSurface] applies), forwards touch to
  * the active AirPlay session, and drives the complete wired or wireless bring-up through
  * [CarPlayController].
  *
@@ -210,6 +211,13 @@ class CarPlayHostActivity : ComponentActivity() {
             appendLog(if (granted) "Microphone permission granted" else "Microphone permission denied")
             requestStartupPrerequisites()
         }
+    private val localNetworkPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            localNetworkPermissionResolved = true
+            // Without it Android 17 drops the iPhone's AirPlay TCP on both the NCM link and Wi-Fi.
+            appendLog(if (granted) "Local network permission granted" else "Local network permission denied; CarPlay cannot connect")
+            requestStartupPrerequisites()
+        }
     private val locationPermission =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
             awaitingLocationPermission = false
@@ -260,7 +268,12 @@ class CarPlayHostActivity : ComponentActivity() {
             }
         }
 
-    private var videoView: TextureView? = null
+    /**
+     * Full-size view measured for display negotiation: the TextureView itself, or with
+     * [DirectVideoSurface] a container whose [directVideoSurface] child is placed at the content rect.
+     */
+    private var videoView: View? = null
+    private var directVideoSurface: SurfaceView? = null
     private var pictureBinding: CarPlayPicture.Binding? = null
     private var picturePanel: View? = null
     private var picturePanelGeneration = 0
@@ -376,6 +389,7 @@ class CarPlayHostActivity : ComponentActivity() {
     private var awaitingVpnConsent = false
     private var awaitingWirelessPermissions = false
     private var awaitingLocationPermission = false
+    private var localNetworkPermissionResolved = false
     private var vpnReady = false
     private var hotspotStatus = HotspotStatus(state = "off")
     private var menuOpen = false
@@ -493,6 +507,28 @@ class CarPlayHostActivity : ComponentActivity() {
         }
 
         override fun onSurfaceTextureUpdated(texture: SurfaceTexture) = Unit
+    }
+
+    /** Surface lifecycle for [DirectVideoSurface]; the container's layout drives sizing instead. */
+    private val directSurfaceCallback = object : SurfaceHolder.Callback {
+        override fun surfaceCreated(holder: SurfaceHolder) {
+            val surface = holder.surface
+            currentSurface = surface
+            appendLog("Direct video surface created")
+            attachSurface(surface)
+        }
+
+        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
+
+        override fun surfaceDestroyed(holder: SurfaceHolder) {
+            val surface = holder.surface
+            if (currentSurface !== surface) return
+            sink?.clearSurface(SCREEN_TYPE_MAIN, surface)
+            sink?.clearSurface(SCREEN_TYPE_ALT, surface)
+            // The holder owns this Surface; release only the reference.
+            currentSurface = null
+            appendLog("Direct video surface destroyed")
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -627,6 +663,12 @@ class CarPlayHostActivity : ComponentActivity() {
     }
 
     private fun requestStartupPrerequisites() {
+        if (!localNetworkPermissionResolved && Build.VERSION.SDK_INT >= LOCAL_NETWORK_PERMISSION_SDK &&
+            checkSelfPermission(PERMISSION_ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED
+        ) {
+            localNetworkPermission.launch(PERMISSION_ACCESS_LOCAL_NETWORK)
+            return
+        }
         if (locationReportingEnabled && !locationPermissionAvailable) {
             requestLocationPermission()
             return
@@ -1235,11 +1277,24 @@ class CarPlayHostActivity : ComponentActivity() {
 
     private fun buildContentView(): View {
         val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
-        val video = TextureView(this).apply {
-            isOpaque = false
-            surfaceTextureListener = textureListener
+        val video: View = if (DirectVideoSurface.required()) {
+            val surfaceView = SurfaceView(this).apply { holder.addCallback(directSurfaceCallback) }
+            directVideoSurface = surfaceView
+            appendLog("Video renders through a direct surface: no hardware video decoder; picture adjustments unavailable")
+            FrameLayout(this).apply {
+                addView(surfaceView, FrameLayout.LayoutParams(-1, -1))
+                addOnLayoutChangeListener { view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+                    if (right - left == oldRight - oldLeft && bottom - top == oldBottom - oldTop) return@addOnLayoutChangeListener
+                    updateVideoLayout(view.width, view.height)
+                    scheduleDisplaySize(view.width, view.height)
+                }
+            }
+        } else {
+            TextureView(this).apply {
+                isOpaque = false
+                surfaceTextureListener = textureListener
+            }.also { pictureBinding = CarPlayPicture.Binding(it) }
         }
-        pictureBinding = CarPlayPicture.Binding(video)
         val gestureLayer = View(this).apply {
             isClickable = true
             setOnTouchListener { view, event -> onHostTouch(view, event) }
@@ -4167,11 +4222,31 @@ class CarPlayHostActivity : ComponentActivity() {
         val view = videoView ?: return
         if (viewWidth <= 0 || viewHeight <= 0) return
         val content = contentRect(viewWidth, viewHeight)
-        view.setTransform(Matrix().apply {
-            setScale(content.width / viewWidth, content.height / viewHeight)
-            postTranslate(content.left, content.top)
-        })
+        val direct = directVideoSurface
+        if (direct != null) {
+            placeDirectSurface(direct, content)
+        } else {
+            (view as? TextureView)?.setTransform(Matrix().apply {
+                setScale(content.width / viewWidth, content.height / viewHeight)
+                postTranslate(content.left, content.top)
+            })
+        }
         if (sidePanelShown) placeSidePanel(viewWidth, viewHeight)
+    }
+
+    /** A SurfaceView has no transform, so the content rect becomes its own bounds in the container. */
+    private fun placeDirectSurface(surfaceView: SurfaceView, content: CarPlayVideoLayout) {
+        val width = content.width.roundToInt().coerceAtLeast(1)
+        val height = content.height.roundToInt().coerceAtLeast(1)
+        val left = content.left.roundToInt()
+        val top = content.top.roundToInt()
+        val current = surfaceView.layoutParams as? FrameLayout.LayoutParams
+        if (current != null && current.width == width && current.height == height &&
+            current.leftMargin == left && current.topMargin == top) return
+        surfaceView.layoutParams = FrameLayout.LayoutParams(width, height).apply {
+            leftMargin = left
+            topMargin = top
+        }
     }
 
     private fun recordDetectedMaximum(size: DisplaySize) {
@@ -4702,6 +4777,9 @@ class CarPlayHostActivity : ComponentActivity() {
     private companion object {
         const val SIDE_PANEL_REFRESH_MILLIS = 5_000L
         const val TAG = "xcertplay-usb"
+        /** Android 17 (API 37) gates LAN and link-local traffic behind this runtime permission. */
+        const val PERMISSION_ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"
+        const val LOCAL_NETWORK_PERMISSION_SDK = 37
         const val SCREEN_TYPE_MAIN = 110
         const val SCREEN_TYPE_ALT = 111
         private const val CENTER_MAP_IDLE_MILLIS = 3_000L // a reconnect is quicker; a session end is not
