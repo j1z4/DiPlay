@@ -31,6 +31,8 @@ import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.Surface
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import android.view.TextureView
 import android.view.KeyEvent
 import android.view.View
@@ -213,6 +215,7 @@ class CarPlayHostActivity : ComponentActivity() {
         }
     private val localNetworkPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            awaitingLocalNetworkPermission = false
             localNetworkPermissionResolved = true
             // Without it Android 17 drops the iPhone's AirPlay TCP on both the NCM link and Wi-Fi.
             appendLog(if (granted) "Local network permission granted" else "Local network permission denied; CarPlay cannot connect")
@@ -390,6 +393,7 @@ class CarPlayHostActivity : ComponentActivity() {
     private var awaitingWirelessPermissions = false
     private var awaitingLocationPermission = false
     private var localNetworkPermissionResolved = false
+    private var awaitingLocalNetworkPermission = false
     private var vpnReady = false
     private var hotspotStatus = HotspotStatus(state = "off")
     private var menuOpen = false
@@ -666,7 +670,10 @@ class CarPlayHostActivity : ComponentActivity() {
         if (!localNetworkPermissionResolved && Build.VERSION.SDK_INT >= LOCAL_NETWORK_PERMISSION_SDK &&
             checkSelfPermission(PERMISSION_ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED
         ) {
-            localNetworkPermission.launch(PERMISSION_ACCESS_LOCAL_NETWORK)
+            if (!awaitingLocalNetworkPermission) {
+                awaitingLocalNetworkPermission = true
+                localNetworkPermission.launch(PERMISSION_ACCESS_LOCAL_NETWORK)
+            }
             return
         }
         if (locationReportingEnabled && !locationPermissionAvailable) {
@@ -1265,7 +1272,8 @@ class CarPlayHostActivity : ComponentActivity() {
         currentSurface?.let { surface ->
             sink?.clearSurface(SCREEN_TYPE_MAIN, surface)
             sink?.clearSurface(SCREEN_TYPE_ALT, surface)
-            surface.release()
+            // A direct SurfaceView owns its Surface; only TextureView surfaces are ours to release.
+            if (directVideoSurface == null) surface.release()
         }
         currentSurface = null
         currentSurfaceTexture = null
