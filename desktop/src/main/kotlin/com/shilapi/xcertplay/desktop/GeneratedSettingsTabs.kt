@@ -23,14 +23,19 @@ import javax.swing.SpinnerNumberModel
 class GeneratedSettingsTabs {
     private val editors = SettingsSchema.ALL.associateWith { editorFor(it) }
 
-    /** The content for one schema tab. */
-    fun tab(name: String): JComponent = JPanel().apply {
+    /** The content for one schema tab; [lead] (dashboard-owned, e.g. live controls) goes above the settings. */
+    fun tab(name: String, lead: JComponent? = null): JComponent = JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         border = BorderFactory.createEmptyBorder(PAD, PAD, PAD, PAD)
+        lead?.let(::add)
         SettingsSchema.ALL.filter { it.tab == name }.groupBy { it.section }.forEach { (section, settings) ->
             add(section(section, settings))
         }
-        components.forEach { (it as JComponent).alignmentX = JComponent.LEFT_ALIGNMENT }
+        // BoxLayout lines children up by alignmentX; left-align all and let them span the width only.
+        components.forEach { child ->
+            (child as JComponent).alignmentX = JComponent.LEFT_ALIGNMENT
+            child.maximumSize = java.awt.Dimension(Int.MAX_VALUE, child.preferredSize.height)
+        }
     }
 
     fun load(values: SettingsValues) = editors.forEach { (setting, editor) -> editor.load(values, setting) }

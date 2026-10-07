@@ -1,5 +1,6 @@
 package com.shilapi.xcertplay.desktop
 
+import com.shilapi.xcertplay.airplay.CarPlayClusterDisplay.Content
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Dimension
@@ -60,6 +61,20 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
     private val vehicleData = JCheckBox("Simulated vehicle data (EV range, charging, speed, location)")
     private val generated = GeneratedSettingsTabs()
 
+    // Live cluster controls: the showUI/stopUI/zoom commands a car's cluster menu sends to the iPhone.
+    private val clusterStatus = JLabel(CLUSTER_IDLE_HINT).apply { foreground = HINT_COLOR }
+    private val clusterContentButtons = listOf(
+        clusterButton("Map + turn card") { session.showClusterContent(Content.INSTRUMENTS) },
+        clusterButton("Map only") { session.showClusterContent(Content.MAP) },
+        clusterButton("Turn card only") { session.showClusterContent(Content.TURN_CARD) },
+    )
+    private val clusterViewButtons = listOf(
+        clusterButton("Hide") { session.setClusterVisible(false) },
+        clusterButton("Show") { session.setClusterVisible(true) },
+        clusterButton("Zoom in") { session.zoomCluster(true) },
+        clusterButton("Zoom out") { session.zoomCluster(false) },
+    )
+
     private val frame = JFrame("$APP_NAME Dashboard").apply {
         defaultCloseOperation = WindowConstants.DISPOSE_ON_CLOSE
         addWindowListener(object : java.awt.event.WindowAdapter() {
@@ -106,7 +121,7 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
         add(header(), BorderLayout.NORTH)
         add(JTabbedPane().apply {
             addTab("General", scrolling(generalTab()))
-            SettingsSchema.TABS.forEach { name -> addTab(name, scrolling(generated.tab(name))) }
+            SettingsSchema.TABS.forEach { name -> addTab(name, scrolling(generated.tab(name, lead = tabLead(name)))) }
         }, BorderLayout.CENTER)
         add(footer(), BorderLayout.SOUTH)
     }
@@ -256,6 +271,40 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
             SessionState.CONNECTED -> OK_COLOR
         }
         startStop.text = if (state == SessionState.STOPPED) "Start CarPlay" else "Stop"
+        updateClusterControls(state)
+    }
+
+    /** Dashboard-owned content above a generated tab's settings: the live controls on the Cluster tab. */
+    private fun tabLead(tab: String): JComponent? =
+        if (tab == SettingsSchema.CLUSTER_CONTENT.tab) clusterControls() else null
+
+    /** What the iPhone draws on the cluster right now; the settings below only pick what it starts with. */
+    private fun clusterControls(): JComponent = section("Live controls",
+        row(*clusterContentButtons.toTypedArray()),
+        row(*clusterViewButtons.toTypedArray()),
+        clusterStatus,
+        hint("Switches the connected iPhone's cluster without reconnecting; \"Content at start\" picks the first view."),
+    )
+
+    /** A live-control button: the command runs off the EDT and its result lands in [clusterStatus]. */
+    private fun clusterButton(text: String, command: () -> Boolean) = button(text) {
+        thread(isDaemon = true, name = "dashboard-cluster") {
+            val sent = command()
+            SwingUtilities.invokeLater { showClusterResult(text, sent) }
+        }
+    }
+
+    private fun showClusterResult(action: String, sent: Boolean) {
+        clusterStatus.text = if (sent) "Sent: $action" else "Not sent: $action (no cluster stream yet; see the log)"
+        clusterStatus.foreground = if (sent) OK_COLOR else ERROR_COLOR
+    }
+
+    /** The controls only work with a connected iPhone and a run that advertised the cluster. */
+    private fun updateClusterControls(state: SessionState) {
+        val ready = state == SessionState.CONNECTED && session.hasClusterDisplay
+        (clusterContentButtons + clusterViewButtons).forEach { it.isEnabled = ready }
+        clusterStatus.text = if (ready) CLUSTER_READY_HINT else CLUSTER_IDLE_HINT
+        clusterStatus.foreground = HINT_COLOR
     }
 
     private fun showToggle() = JToggleButton("Show").apply {
@@ -300,6 +349,8 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
         const val SCROLL_STEP = 16
         /** Snapshots never show the real Wi-Fi password, even masked. */
         const val PASSWORD_PLACEHOLDER = "placeholder"
+        const val CLUSTER_IDLE_HINT = "Start CarPlay with the cluster display on to use these."
+        const val CLUSTER_READY_HINT = "Connected: the cluster switches as soon as you click."
         val OK_COLOR = Color(0x2E, 0xA0, 0x43)
         val CONNECTING_COLOR = Color(0xD2, 0x99, 0x22)
         val IDLE_COLOR = Color(0x8B, 0x94, 0x9E)

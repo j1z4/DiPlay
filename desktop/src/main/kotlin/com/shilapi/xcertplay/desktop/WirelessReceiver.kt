@@ -228,7 +228,7 @@ class WirelessReceiver(
                 fps = settings.fps,
             ),
             // Experimental second display: SETUP then enables altScreen and the iPhone streams type 111.
-            cluster = if (settings.clusterDisplay) ClusterDisplay.config() else null,
+            cluster = if (settings.clusterDisplay) ClusterDisplay.config(settings.advanced) else null,
             manufacturer = DEVICE_NAME,
             model = DEVICE_NAME,
             oemLabel = DEVICE_NAME,

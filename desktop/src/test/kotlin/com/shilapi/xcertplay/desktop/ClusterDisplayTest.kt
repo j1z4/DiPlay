@@ -2,12 +2,14 @@ package com.shilapi.xcertplay.desktop
 
 import com.shilapi.xcertplay.airplay.AirPlayInfoPlist
 import com.shilapi.xcertplay.airplay.AirPlayInsets
+import com.shilapi.xcertplay.airplay.CarPlayClusterDisplay.Content
 import com.shilapi.xcertplay.airplay.setupEnabledFeatures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.awt.Dimension
 import java.io.File
 
 class ClusterDisplayTest {
@@ -16,8 +18,8 @@ class ClusterDisplayTest {
     private fun config(settings: DesktopSettings) =
         WirelessReceiver.airPlayConfig(settings, "02:00:00:00:00:01", "AA:BB:CC:DD:EE:FF")
 
-    @Test fun clusterIsAnInputLessPanelShowingMapAndTurnCard() {
-        val display = ClusterDisplay.config()
+    @Test fun defaultClusterIsAnInputLessPanelShowingMapAndTurnCard() {
+        val display = ClusterDisplay.config(SettingsValues.DEFAULTS)
 
         assertEquals(1280, display.widthPixels)
         assertEquals(480, display.heightPixels)
@@ -30,12 +32,62 @@ class ClusterDisplayTest {
         assertEquals(true, display.safeAreaDrawOutside)
     }
 
-    @Test fun settingAddsTheClusterAndLeavesTheMainDisplayAlone() {
-        val plain = config(settings)
-        val withCluster = config(settings.copy(clusterDisplay = true))
+    @Test fun clusterSettingsPickSizeFrameRateAndStartContent() {
+        val values = SettingsValues.DEFAULTS
+            .with(SettingsSchema.CLUSTER_WIDTH, 1920)
+            .with(SettingsSchema.CLUSTER_HEIGHT, 720)
+            .with(SettingsSchema.CLUSTER_FPS, 20)
+            .with(SettingsSchema.CLUSTER_CONTENT, "map")
+
+        val display = ClusterDisplay.config(values)
+
+        assertEquals(1920, display.widthPixels)
+        assertEquals(720, display.heightPixels)
+        assertEquals(20, display.fps)
+        assertEquals("maps:/car/instrumentcluster/map", display.initialUrl)
+        assertEquals(Dimension(1920, 720), ClusterDisplay.windowSize(values))
+    }
+
+    @Test fun windowFollowsTheStreamWhichRoundsToMultiplesOfEight() {
+        val values = SettingsValues.DEFAULTS
+            .with(SettingsSchema.CLUSTER_WIDTH, 1000)
+            .with(SettingsSchema.CLUSTER_HEIGHT, 300)
+
+        val display = ClusterDisplay.config(values)
+
+        assertEquals(304, display.heightPixels)
+        assertEquals(1016, display.widthPixels)
+        assertEquals(Dimension(1016, 304), ClusterDisplay.windowSize(values))
+    }
+
+    @Test fun contentSettingMapsToTheIphonesClusterUrls() {
+        assertEquals(Content.INSTRUMENTS, ClusterDisplay.content("instruments"))
+        assertEquals(Content.MAP, ClusterDisplay.content("map"))
+        assertEquals(Content.TURN_CARD, ClusterDisplay.content("turncard"))
+        assertEquals(Content.INSTRUMENTS, ClusterDisplay.content("something-else"))
+
+        assertEquals("maps:/car/instrumentcluster", ClusterDisplay.content("instruments").url)
+        assertEquals("maps:/car/instrumentcluster/map", ClusterDisplay.content("map").url)
+        assertEquals("maps:/car/instrumentcluster/instructioncard", ClusterDisplay.content("turncard").url)
+    }
+
+    @Test fun everyContentChoiceInTheSchemaHasAClusterUrl() {
+        val choice = SettingsSchema.CLUSTER_CONTENT.type as SettingType.Choice
+
+        val urls = choice.options.map { (value, _) -> ClusterDisplay.content(value).url }
+
+        assertEquals(3, urls.distinct().size)
+        assertTrue(urls.all { it.startsWith("maps:/car/instrumentcluster") })
+    }
+
+    @Test fun settingAddsTheConfiguredClusterAndLeavesTheMainDisplayAlone() {
+        val advanced = SettingsValues.DEFAULTS.with(SettingsSchema.CLUSTER_CONTENT, "turncard")
+        val plain = config(settings.copy(advanced = advanced))
+        val withCluster = config(settings.copy(clusterDisplay = true, advanced = advanced))
 
         assertNull(plain.cluster)
-        assertEquals(ClusterDisplay.config(), withCluster.cluster)
+        assertEquals(ClusterDisplay.config(advanced), withCluster.cluster)
+        assertEquals("maps:/car/instrumentcluster/instructioncard", withCluster.cluster?.initialUrl)
         assertEquals(plain, withCluster.copy(cluster = null))
     }
 
