@@ -2,6 +2,7 @@ package com.shilapi.xcertplay.desktop
 
 import com.shilapi.xcertplay.airplay.AirPlayConfig
 import com.shilapi.xcertplay.airplay.AirPlayDisplayConfig
+import com.shilapi.xcertplay.airplay.AirPlayInsets
 import com.shilapi.xcertplay.airplay.AirPlayListenerIdentity
 import com.shilapi.xcertplay.airplay.AirPlayMediaHandler
 import com.shilapi.xcertplay.airplay.AirPlaySession
@@ -53,6 +54,7 @@ class WirelessReceiver(
 
     /** Runs the Bluetooth bootstrap; the AirPlay session continues on its own threads afterwards. */
     fun run() {
+        Diagnostics.applyLogLevel(settings.advanced)
         val wlan = WindowsWlanInfo.current() ?: throw IOException("Connect this PC to Wi-Fi first")
         val host = wifiHostAddress(wlan)
         status("Wi-Fi ${wlan.ssid} channel ${wlan.channel}, receiver at ${host.hostAddress}")
@@ -78,11 +80,11 @@ class WirelessReceiver(
         DesktopBonjour(host, server.boundConfig, identity, log).also { closables += it }.start()
 
         val wireless = Iap2WirelessIdentification(bluetoothMac, wlan.ssid)
-        val base = identification(config.deviceId)
+        val base = identification(config.deviceId, settings.advanced)
         val endpoint = endpoint(wlan, host, port, config, identity.publicKeyHex)
         val mfiClient = Iap2MfiAuthenticationClient(mfi)
         // One car for the whole run: its battery keeps draining across tunnel reconnects.
-        val vehicle = if (settings.vehicleData) SimulatedVehicle(log = log) else null
+        val vehicle = if (settings.vehicleData) SimulatedVehicle.configured(settings.advanced, log) else null
         media.setIapTunnelHandler { stream ->
             val identification = linkIdentification(base, Iap2WirelessLinkRole.RUNTIME_TUNNEL, wireless, settings.vehicleData)
             startTunnel(stream, identification, endpoint, mfiClient, vehicle)
@@ -94,7 +96,7 @@ class WirelessReceiver(
         val result = Iap2WirelessControlClient(session, mfiClient).run(
             identification = linkIdentification(base, Iap2WirelessLinkRole.BLUETOOTH_BOOTSTRAP, wireless, settings.vehicleData),
             endpoint = endpoint,
-            timeoutMillis = BOOTSTRAP_TIMEOUT_MILLIS,
+            timeoutMillis = settings.advanced[SettingsSchema.BOOTSTRAP_TIMEOUT_SECONDS] * MILLIS_PER_SECOND,
             onStartSessionSent = { status("Waiting for iPhone to join over Wi-Fi") },
             onProgress = log,
         )
@@ -111,6 +113,7 @@ class WirelessReceiver(
     private val sessionListener = object : AirPlaySessionListener {
         override fun onSessionActive(session: AirPlaySession) {
             status("CarPlay session active")
+            applyNightMode(session)
             events.onSessionActive(session)
         }
 
@@ -132,17 +135,27 @@ class WirelessReceiver(
         override fun onDebugLog(message: String) = log(message)
     }
 
+    /** The Appearance setting, sent once the event channel is up; "system" follows the Windows app theme. */
+    private fun applyNightMode(session: AirPlaySession) {
+        val appearance = settings.advanced[SettingsSchema.NIGHT_MODE]
+        val night = nightMode(appearance, ::windowsUsesDarkTheme)
+        log("appearance: $appearance -> ${if (night) "night" else "day"}")
+        session.setNightMode(night)
+    }
+
     /** An idle or locked iPhone may miss the first page; retry a few times as Android DiPlay does. */
     private fun connectBluetooth(): WindowsRfcommSocket {
+        val attempts = settings.advanced[SettingsSchema.BLUETOOTH_ATTEMPTS]
+        val retryMillis = settings.advanced[SettingsSchema.BLUETOOTH_RETRY_SECONDS] * MILLIS_PER_SECOND
         var lastError: IOException? = null
-        for (attempt in 1..BLUETOOTH_ATTEMPTS) {
-            status("Connecting to iPhone over Bluetooth (attempt $attempt of $BLUETOOTH_ATTEMPTS)")
+        for (attempt in 1..attempts) {
+            status("Connecting to iPhone over Bluetooth (attempt $attempt of $attempts)")
             try {
                 return WindowsRfcommSocket.connect(settings.iphoneAddress, IAP2_IPHONE_UUID)
             } catch (error: IOException) {
                 lastError = error
                 log("bluetooth connect attempt $attempt failed: ${error.message}")
-                if (attempt < BLUETOOTH_ATTEMPTS) Thread.sleep(BLUETOOTH_RETRY_MILLIS)
+                if (attempt < attempts) Thread.sleep(retryMillis)
             }
         }
         throw IOException("iPhone did not answer over Bluetooth; unlock it and keep Bluetooth on", lastError)
@@ -210,32 +223,57 @@ class WirelessReceiver(
     }
 
     companion object {
-        private const val DEVICE_NAME = APP_NAME
         private const val SOURCE_VERSION = "950.7.1"
-        private const val BOOTSTRAP_TIMEOUT_MILLIS = 5 * 60_000L
-        private const val BLUETOOTH_ATTEMPTS = 4
-        private const val BLUETOOTH_RETRY_MILLIS = 3_000L
+        private const val MILLIS_PER_SECOND = 1_000L
 
         /** The receiver as advertised to the iPhone; the cluster display only when enabled in settings. */
-        internal fun airPlayConfig(settings: DesktopSettings, deviceId: String, bluetoothMac: String) = AirPlayConfig(
-            deviceName = DEVICE_NAME,
-            deviceId = deviceId,
-            btMac = bluetoothMac,
-            sourceVersion = SOURCE_VERSION,
-            main = AirPlayDisplayConfig(
-                widthPixels = settings.width and 1.inv(),
-                heightPixels = settings.height and 1.inv(),
-                fps = settings.fps,
-            ),
-            // Experimental second display: SETUP then enables altScreen and the iPhone streams type 111.
-            cluster = if (settings.clusterDisplay) ClusterDisplay.config(settings.advanced) else null,
-            manufacturer = DEVICE_NAME,
-            model = DEVICE_NAME,
-            oemLabel = DEVICE_NAME,
-            // Without microphone input formats the iPhone treats the receiver as having no car audio
-            // and keeps every sound on the phone.
-            microphone = true,
+        internal fun airPlayConfig(settings: DesktopSettings, deviceId: String, bluetoothMac: String): AirPlayConfig {
+            val advanced = settings.advanced
+            return AirPlayConfig(
+                deviceName = advanced[SettingsSchema.DEVICE_NAME],
+                deviceId = deviceId,
+                btMac = bluetoothMac,
+                sourceVersion = SOURCE_VERSION,
+                main = mainDisplay(settings),
+                // Experimental second display: SETUP then enables altScreen and the iPhone streams type 111.
+                cluster = if (settings.clusterDisplay) ClusterDisplay.config(advanced) else null,
+                rightHandDrive = advanced[SettingsSchema.RIGHT_HAND_DRIVE],
+                port = advanced[SettingsSchema.AIRPLAY_PORT],
+                // With audio off /info offers no audio formats, so every sound stays on the iPhone.
+                disableAudioOutput = !advanced[SettingsSchema.AUDIO_ENABLED],
+                manufacturer = advanced[SettingsSchema.MANUFACTURER],
+                model = advanced[SettingsSchema.MODEL],
+                oemLabel = advanced[SettingsSchema.DEVICE_NAME],
+                // Without microphone input formats the iPhone treats the receiver as having no car audio
+                // and keeps every sound on the phone; with the microphone setting off, silence is sent.
+                microphone = true,
+            )
+        }
+
+        /** The main screen: stream size from the core settings, physical size and bezel insets from the granular ones. */
+        internal fun mainDisplay(settings: DesktopSettings): AirPlayDisplayConfig = AirPlayDisplayConfig(
+            widthPixels = settings.width and 1.inv(),
+            heightPixels = settings.height and 1.inv(),
+            widthPhysicalMm = settings.advanced[SettingsSchema.SCREEN_WIDTH_MM],
+            heightPhysicalMm = settings.advanced[SettingsSchema.SCREEN_HEIGHT_MM],
+            fps = settings.fps,
+            safeArea = safeArea(settings.advanced),
         )
+
+        /** Bezel insets in stream pixels, or null (the whole screen is usable) while every inset is 0. */
+        internal fun safeArea(advanced: SettingsValues): AirPlayInsets? = AirPlayInsets(
+            top = advanced[SettingsSchema.SAFE_TOP],
+            bottom = advanced[SettingsSchema.SAFE_BOTTOM],
+            left = advanced[SettingsSchema.SAFE_LEFT],
+            right = advanced[SettingsSchema.SAFE_RIGHT],
+        ).takeIf { it != AirPlayInsets() }
+
+        /** Night for the Appearance choice "night", day for "day"; "system" asks [windowsDark]. */
+        internal fun nightMode(appearance: String, windowsDark: () -> Boolean): Boolean = when (appearance) {
+            "night" -> true
+            "day" -> false
+            else -> windowsDark()
+        }
 
         /** The IPv4 address of the Wi-Fi adapter netsh reported (Java names it by its description). */
         fun wifiHostAddress(wlan: WindowsWlanInfo): InetAddress {
@@ -247,10 +285,10 @@ class WirelessReceiver(
         }
 
         /** The accessory identity sent on both iAP2 links; [deviceId] is the AirPlay device id. */
-        internal fun identification(deviceId: String) = Iap2IdentificationConfig(
-            name = DEVICE_NAME,
-            modelIdentifier = DEVICE_NAME,
-            manufacturer = DEVICE_NAME,
+        internal fun identification(deviceId: String, advanced: SettingsValues = SettingsValues.DEFAULTS) = Iap2IdentificationConfig(
+            name = advanced[SettingsSchema.DEVICE_NAME],
+            modelIdentifier = advanced[SettingsSchema.MODEL],
+            manufacturer = advanced[SettingsSchema.MANUFACTURER],
             serialNumber = "OPENPLAY-" + deviceId.replace(":", ""),
             firmwareVersion = "0.1.0",
             hardwareVersion = "1.0",
