@@ -6,14 +6,23 @@ import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 import javax.swing.SwingUtilities
 
-/** Opens the dashboard; with autoStart and complete settings, CarPlay starts right away. */
-fun main() {
+/**
+ * Opens the dashboard; with autoStart and complete settings, CarPlay starts right away.
+ * `--snapshot <file.png>` renders the dashboard off-screen to a PNG and exits.
+ */
+fun main(args: Array<String>) {
     val log: (String) -> Unit = { println("${LocalTime.now()} $it") }
     val store = DesktopStore()
     val settings = store.loadSettings()
+    val snapshot = args.indexOf("--snapshot").takeIf { it >= 0 }?.let { args.getOrNull(it + 1) }
     SwingUtilities.invokeLater {
         if (windowsUsesDarkTheme()) FlatDarkLaf.setup() else FlatLightLaf.setup()
-        SettingsDashboard(store, log).show(startNow = settings.autoStart && settings.problems().isEmpty())
+        val dashboard = SettingsDashboard(store, log)
+        if (snapshot != null) {
+            dashboard.snapshot(java.io.File(snapshot))
+            Runtime.getRuntime().halt(0)
+        }
+        dashboard.show(startNow = settings.autoStart && settings.problems().isEmpty())
     }
 }
 

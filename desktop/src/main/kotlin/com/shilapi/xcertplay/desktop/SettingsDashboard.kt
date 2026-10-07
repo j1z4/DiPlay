@@ -51,6 +51,7 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
     private val resolution = JComboBox(RESOLUTIONS.map { it.label }.toTypedArray())
     private val customWidth = JSpinner(SpinnerNumberModel(1280, 320, 3840, 2))
     private val customHeight = JSpinner(SpinnerNumberModel(720, 320, 2160, 2))
+    private val sizeSeparator = JLabel("x")
     private val fps = JComboBox(arrayOf(30, 60))
     private val fullscreen = JCheckBox("Fullscreen (kiosk for an in-car PC)")
     private val autoStart = JCheckBox("Start CarPlay automatically when OpenPlay opens")
@@ -79,6 +80,23 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
         if (startNow) startCarPlay()
     }
 
+    /** Renders the dashboard off-screen into a PNG (visual checks; no window is shown). */
+    fun snapshot(target: File) {
+        frame.contentPane = JScrollPane(content()).apply { border = null }
+        load(store.loadSettings())
+        refreshDevices()
+        wifiNetwork.text = runCatching { WindowsWlanInfo.current() }.getOrNull()
+            ?.let { "Connected to ${it.ssid}  •  ${it.band.ifBlank { "Wi-Fi" }}, channel ${it.channel}" }
+            ?: "This PC is not connected to Wi-Fi"
+        passphrase.text = PASSWORD_PLACEHOLDER
+        frame.pack()
+        val pane = frame.contentPane
+        val image = java.awt.image.BufferedImage(pane.width, pane.height, java.awt.image.BufferedImage.TYPE_INT_RGB)
+        image.createGraphics().also { pane.printAll(it) }.dispose()
+        javax.imageio.ImageIO.write(image, "png", target)
+        frame.dispose()
+    }
+
     private fun content(): JComponent = JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         border = BorderFactory.createEmptyBorder(PAD, PAD, PAD, PAD)
@@ -88,11 +106,16 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
         add(section("Wi-Fi", wifiNetwork, row(JLabel("Password"), passphrase, showToggle()),
             hint("The network this PC and the iPhone share. Leave blank for an open network.")))
         add(section("Accessory identity", row(identityFolder, button("Browse...") { chooseFolder() }), identityStatus))
-        add(section("Display", row(JLabel("Resolution"), resolution, customWidth, JLabel("x"), customHeight),
+        add(section("Display", row(JLabel("Resolution"), resolution, customWidth, sizeSeparator, customHeight),
             row(JLabel("Frame rate"), fps), fullscreen, autoStart))
         add(section("Experimental: CarPlay Ultra", cluster, vehicleData,
             hint("Next-generation CarPlay building blocks. Full CarPlay Ultra is limited by Apple to approved vehicles.")))
         add(footer())
+        // BoxLayout lines children up by alignmentX; left-align all and let them span the width.
+        components.forEach { child ->
+            (child as JComponent).alignmentX = JComponent.LEFT_ALIGNMENT
+            child.maximumSize = Dimension(Int.MAX_VALUE, child.preferredSize.height)
+        }
     }
 
     private fun header(): JComponent = JPanel(BorderLayout()).apply {
@@ -201,6 +224,7 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
     private fun updateCustomSize() {
         val custom = RESOLUTIONS[resolution.selectedIndex].width == null
         customWidth.isVisible = custom
+        sizeSeparator.isVisible = custom
         customHeight.isVisible = custom
         frame.contentPane?.revalidate()
     }
@@ -254,6 +278,8 @@ class SettingsDashboard(private val store: DesktopStore, private val log: (Strin
         const val TITLE_SIZE = 24f
         const val STATUS_DOT_SIZE = 18f
         const val SAVED_ADDRESS = "openplay.savedAddress"
+        /** Snapshots never show the real Wi-Fi password, even masked. */
+        const val PASSWORD_PLACEHOLDER = "placeholder"
         val OK_COLOR = Color(0x2E, 0xA0, 0x43)
         val CONNECTING_COLOR = Color(0xD2, 0x99, 0x22)
         val IDLE_COLOR = Color(0x8B, 0x94, 0x9E)
