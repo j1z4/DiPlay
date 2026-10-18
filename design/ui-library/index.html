@@ -75,9 +75,10 @@
       <table class="lib-table">
         <tr><th>Token</th><th>App today (<code>DiPlayPalette.DARK</code>)</th><th>Library</th></tr>
         <tr><td>Background</td><td><code>#0C111B</code> navy</td><td><code>#000000</code> true black (Figma); off on OLED</td></tr>
-        <tr><td>Surface / row</td><td><code>#151E2C</code>, <code>#1F2B3D</code> with a 1dp outline</td><td><code>#1A1D24</code> neutral, no outline; the slate <code>#566177</code> for the home card</td></tr>
-        <tr><td>Focus</td><td>3dp <code>#A6C8FF</code> ring</td><td>The row inverts to white with a 3.5% lift. Buttons keep the ring, offset 5px.</td></tr>
-        <tr><td>Card radius</td><td>≈ 25dp (1.35 × 52 × 20/56)</td><td>16px card, rows 14/56 of height</td></tr>
+        <tr><td>Surface / row</td><td><code>#151E2C</code>, <code>#1F2B3D</code> with a 1dp outline</td><td>Graphite <code>#14161B</code> / <code>#1D2027</code> with a lit top edge in place of the outline. The home card is a glass gradient <code>#2A303B → #1E222A</code>.</td></tr>
+        <tr><td>Accent</td><td><code>#A6C8FF</code> pale blue</td><td><code>#2FE46A</code> signal green, from the logo</td></tr>
+        <tr><td>Focus</td><td>3dp <code>#A6C8FF</code> ring</td><td>The row inverts to white with a 3.5% lift. Buttons keep the ring, now green, offset 5px.</td></tr>
+        <tr><td>Card radius</td><td>≈ 25dp (1.35 × 52 × 20/56)</td><td>20px card, rows 14/56 of height</td></tr>
         <tr><td>Button radius</td><td><code>min(24dp, h × 20/56)</code></td><td>Same rule, written in CSS with <code>min()</code></td></tr>
         <tr><td>Type</td><td><code>sans-serif-medium</code> (Roboto)</td><td>Outfit, to match the Figma wordmark</td></tr>
         <tr><td>Motion</td><td>No custom curves. A 150ms fade, 200ms alpha, a 900ms search highlight.</td><td>Five durations and three curves, all in tokens</td></tr>
@@ -104,7 +105,10 @@
     <section class="lib-page" data-page="color" data-title="Color" data-group="Foundations" hidden>
       <div class="lib-eyebrow">Foundations</div>
       <h1>Color</h1>
-      <p class="lib-lede">The canvas is true black, with neutral greys for rows and one slate tone from the Figma frame for the home card. Color carries meaning only: green means connected, amber means it needs attention, red means destructive.</p>
+      <p class="lib-lede">The canvas is true black, rows are graphite, and the home card is the Figma slate deepened into glass. Color carries meaning only: brand green means on or connected, amber means it needs attention, red means destructive.</p>
+      <h2>Brand</h2>
+      <p>Taken from the mark's gradient. Signal green is the only hue in the chrome. It means "on", "connected" and "you are here".</p>
+      <div class="lib-grid" id="sw-brand"></div>
       <h2>Surfaces</h2>
       <div class="lib-grid" id="sw-surface"></div>
       <h2>Text</h2>
@@ -173,6 +177,63 @@
       <h1>Icons</h1>
       <p class="lib-lede">These are the app's own <code>ic_dp_*</code> vector drawables, converted to SVG by <code>build_icons.py</code>. Use them with <code>&lt;i data-dp-icon="name"&gt;</code> and they inherit the text color.</p>
       <div class="lib-stage is-alone"><div class="lib-icons" id="icon-grid"></div></div>
+    </section>
+
+    <section class="lib-page" data-page="logo" data-title="Logo &amp; splash" data-group="Foundations" hidden>
+      <div class="lib-eyebrow">Foundations</div>
+      <h1>Logo and splash</h1>
+      <p class="lib-lede">The DiPlay mark is a rounded five-point asterisk drawn as one closed path, so it traces cleanly. The splash draws the outline, fills it with the signal-green gradient, then lets the outline go. The same timing works as an Android 12 splash screen and as a boot animation.</p>
+
+      <div class="lib-stage lib-stage--col lib-stage--center" style="min-height:440px">
+        <div class="dp-splash" id="logo-splash" data-dp-splash style="width:220px;justify-self:center;margin:0 auto">
+          <div class="dp-splash__after dp-wordmark" style="margin-top:28px">
+            <div class="dp-wordmark__name" style="font-size:56px">DiPlay</div>
+            <div class="dp-wordmark__tagline" style="font-size:18px;color:var(--dp-text-secondary)">CarPlay, that you own.</div>
+          </div>
+        </div>
+      </div>
+      <div class="hu-bar">
+        <button class="hu-chip" id="logo-replay">Replay trace</button>
+        <span class="lib-hint">2.6 s in the browser · 1.0 s as an Android splash</span>
+      </div>
+
+      <h2>Mark</h2>
+      <div class="lib-stage lib-stage--center" data-code>
+        <i data-dp-mark style="width:96px"></i>
+        <i data-dp-mark="mono" style="width:64px;color:var(--dp-text)"></i>
+        <i data-dp-mark="mono" style="width:40px;color:var(--dp-brand-strong)"></i>
+        <i data-dp-mark="mono" style="width:24px;color:var(--dp-text-secondary)"></i>
+      </div>
+      <p>The full-color mark fades into black at the bottom, so it belongs on the true-black canvas. Use the one-color version on any other surface, and on screens where it sits next to text.</p>
+
+      <h2>Timeline</h2>
+      <table class="lib-table">
+        <tr><th>Phase</th><th>Browser / boot</th><th>Android splash</th><th>What moves</th></tr>
+        <tr><td>Trace</td><td>0 – 1.6 s</td><td>0 – 700 ms</td><td>The outline draws counter-clockwise from the top-left corner, white fading to green, with a blurred green glow.</td></tr>
+        <tr><td>Fill</td><td>1.25 – 2.05 s</td><td>500 – 900 ms</td><td>The gradient fades in and the mark settles from 96% to 100%.</td></tr>
+        <tr><td>Release</td><td>1.8 – 2.6 s</td><td>750 – 1000 ms</td><td>The outline and glow dissolve, leaving the filled mark.</td></tr>
+        <tr><td>Wordmark</td><td>1.9 – 2.6 s</td><td>(app content)</td><td>"DiPlay" and the tagline rise in.</td></tr>
+      </table>
+
+      <h2>Files</h2>
+      <table class="lib-table">
+        <tr><th>File</th><th>Use</th></tr>
+        <tr><td><a href="brand/diplay-mark.svg" target="_blank">brand/diplay-mark.svg</a></td><td>The mark, cleaned from <code>~/bootanimation/logo.svg</code>: one path, without the Figma stroke mask that left spikes on the old PNG. Original gradient.</td></tr>
+        <tr><td><a href="brand/diplay-mark-outline.svg" target="_blank">brand/diplay-mark-outline.svg</a></td><td>The outline only, to trace in any tool (After Effects, Figma, Lottie).</td></tr>
+        <tr><td><a href="brand/diplay-splash-trace.svg" target="_blank">brand/diplay-splash-trace.svg</a></td><td>The animated trace as one self-contained SVG. Open it in a browser to watch it.</td></tr>
+        <tr><td><a href="brand/avd_diplay_splash.xml" target="_blank">brand/avd_diplay_splash.xml</a></td><td>An AnimatedVectorDrawable for the Android 12+ SplashScreen API (288dp canvas, 1000 ms).</td></tr>
+        <tr><td><a href="brand/diplay_mark_path.xml" target="_blank">brand/diplay_mark_path.xml</a></td><td>The path as a string resource, shared by the drawable's fill and trace.</td></tr>
+      </table>
+
+      <h3>Android splash</h3>
+      <div class="lib-stage lib-stage--col is-alone" style="padding:24px 28px">
+<pre style="margin:0;font:400 13px/1.65 var(--dp-font-mono);color:#c9d6ee;white-space:pre-wrap">&lt;!-- res/values/themes.xml, Theme.SplashScreen parent from androidx.core:core-splashscreen --&gt;
+&lt;item name="windowSplashScreenBackground"&gt;#000000&lt;/item&gt;
+&lt;item name="windowSplashScreenAnimatedIcon"&gt;@drawable/avd_diplay_splash&lt;/item&gt;
+&lt;item name="windowSplashScreenAnimationDuration"&gt;1000&lt;/item&gt;
+&lt;item name="postSplashScreenTheme"&gt;@style/Theme.DiPlay&lt;/item&gt;</pre>
+      </div>
+      <div class="lib-note"><strong>Boot animation.</strong> <code>bootanimation.zip</code> needs PNG frames. Render the trace frames at 1920 × 1080 / 30 fps: part 0 is the 2.6 s trace, part 1 loops the filled mark with a slow glow. Then pack them with the <code>make_bootanimation.py</code> pipeline in <code>~/bootanimation</code>.</div>
     </section>
 
     <!-- ===================================================== Components -->
@@ -449,6 +510,7 @@
       <p class="lib-lede">The whole flow on a 1280 × 720 head unit, built only from the components above. Start at Home, connect, open Settings, change a picker, run the setup guide. Hover moves focus as on Apple TV, and the arrow keys act as a D-pad.</p>
       <div class="hu"><div class="hu__glass"><div class="hu__screen" id="proto"></div></div></div>
       <div class="hu-bar" id="proto-bar">
+        <button class="hu-chip" data-go="splash">Splash</button>
         <button class="hu-chip" data-go="home">Home</button>
         <button class="hu-chip" data-go="connecting">Connecting</button>
         <button class="hu-chip" data-go="failed">Failed</button>

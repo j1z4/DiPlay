@@ -31,6 +31,17 @@ You can deep-link to a screen with `#walkthrough/home`, `connecting`, `failed`, 
 | `library.css`, `library.js`, `index.html` | The library site itself |
 | `selftest.html` | A headless check of the D-pad flow (rail, pane, picker, dialog, connect) |
 
+## Logo and splash (`brand/`)
+
+| File | Use |
+| --- | --- |
+| `diplay-mark.svg` | The mark, cleaned from `~/bootanimation/logo.svg` (one path, without the Figma stroke mask) |
+| `diplay-mark-outline.svg` | The outline only, to trace in other tools |
+| `diplay-splash-trace.svg` | The animated trace (2.6 s), self-contained; open it in a browser |
+| `avd_diplay_splash.xml` + `diplay_mark_path.xml` | The Android 12+ splash icon (AnimatedVectorDrawable, 1000 ms). Copy them to `res/drawable/` and `res/values/` |
+
+In pages, `<i data-dp-mark>` renders the mark (`data-dp-mark="mono"` for one color), and `<div data-dp-splash>` renders the trace. `DP.replaySplash(el)` plays it again.
+
 ## Rules carried over from the app
 
 - Corner radius follows control height: `min(24px, h × 20/56)` for buttons and `h × 14/56` for rows, as in `DiPlayButton.kt`.

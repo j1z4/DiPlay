@@ -54,6 +54,42 @@
   color: var(--dp-text);
 }
 
+.dp-wordmark__mark { width: 72px; height: auto; margin-bottom: var(--dp-space-3); filter: drop-shadow(0 8px 28px var(--dp-brand-glow)); }
+
+/* ---------- Mark and splash ---------- */
+
+.dp-mark { display: block; width: 48px; height: auto; flex: none; }
+
+/*
+ * Splash trace, same timeline as brand/diplay-splash-trace.svg (2.6 s):
+ * outline draws 0-1.6 s, fill settles in 1.25-2.05 s, outline dissolves 1.8-2.6 s.
+ * Add .is-playing to run it; DP.replaySplash(el) restarts it.
+ */
+.dp-splash { position: relative; display: grid; place-items: center; }
+.dp-splash__svg { width: 100%; height: auto; overflow: visible; }
+.dp-splash__trace,
+.dp-splash__glow { fill: none; stroke-dasharray: 1 1; stroke-dashoffset: 1; }
+.dp-splash__glow { opacity: 0.9; }
+.dp-splash__fill { opacity: 0; transform-origin: 75px 74px; transform: scale(0.96); }
+.dp-splash.is-playing .dp-splash__trace,
+.dp-splash.is-playing .dp-splash__glow {
+  animation: dp-trace 1.6s var(--dp-ease-in-out) forwards, dp-trace-out 0.8s ease-in 1.8s forwards;
+}
+.dp-splash.is-playing .dp-splash__fill { animation: dp-trace-fill 0.8s var(--dp-ease-out) 1.25s forwards; }
+.dp-splash__after { opacity: 0; }
+.dp-splash.is-playing .dp-splash__after { animation: dp-splash-rise 0.7s var(--dp-ease-out) 1.9s forwards; }
+@keyframes dp-splash-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes dp-trace { to { stroke-dashoffset: 0; } }
+@keyframes dp-trace-out { to { opacity: 0; } }
+@keyframes dp-trace-fill { to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .dp-splash .dp-splash__trace, .dp-splash .dp-splash__glow { animation: none !important; opacity: 0; }
+  .dp-splash .dp-splash__fill, .dp-splash .dp-splash__after { animation: none !important; opacity: 1; transform: none; }
+}
+
 /* ---------- Button ---------- */
 
 .dp-btn {
@@ -137,6 +173,7 @@
   border: 0;
   border-radius: min(24px, calc(var(--h) * 14 / 56));
   background: var(--dp-surface);
+  box-shadow: var(--dp-highlight);
   color: var(--dp-text);
   font: 600 19px / 1.2 var(--dp-font);
   letter-spacing: var(--dp-tracking-tight);
@@ -230,6 +267,8 @@
   display: grid;
   border-radius: var(--dp-radius-card);
   background: var(--dp-card);
+  border: 1px solid var(--dp-card-edge);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 48px -24px rgba(0, 0, 0, 0.8);
   padding: var(--dp-space-2) var(--dp-space-3);
   overflow: hidden;
 }
@@ -256,21 +295,40 @@
   background: var(--dp-card-divider);
   transition: opacity var(--dp-dur-fast);
 }
-.dp-card__item:hover { background: rgba(255, 255, 255, 0.06); }
+.dp-card__item:hover { background: color-mix(in srgb, var(--dp-text) 5%, transparent); }
 .dp-card__item:focus-visible,
-.dp-card__item.is-focused { background: rgba(255, 255, 255, 0.14); }
+.dp-card__item.is-focused {
+  background: var(--dp-focus-fill);
+  color: var(--dp-focus-text);
+  transform: scale(1.02);
+  box-shadow: var(--dp-focus-shadow);
+}
+.dp-card__item.is-focused .dp-card__label,
+.dp-card__item:focus-visible .dp-card__label { color: var(--dp-focus-value); }
+.dp-card__item.is-focused .dp-card__value,
+.dp-card__item:focus-visible .dp-card__value { color: var(--dp-focus-text); }
 .dp-card__item:focus-visible::before,
 .dp-card__item.is-focused::before,
 .dp-card__item:focus-visible + .dp-card__item::before,
 .dp-card__item.is-focused + .dp-card__item::before { opacity: 0; }
-.dp-card__label { font: 500 22px / 1.2 var(--dp-font); color: var(--dp-text-label); }
-.dp-card__value { font: 500 24px / 1.2 var(--dp-font); color: var(--dp-text); }
+.dp-card__label { font: 500 17px / 1.2 var(--dp-font); color: var(--dp-text-label); transition: color var(--dp-dur-fast); }
+.dp-card__value { font: 600 26px / 1.2 var(--dp-font); letter-spacing: var(--dp-tracking-tight); color: var(--dp-text); transition: color var(--dp-dur-fast); }
 .dp-card__value .dp-status { margin-inline-start: var(--dp-space-2); vertical-align: middle; }
 
 /* The Figma "Settings >" row: a single slate row under the card. */
-.dp-row--slate { background: var(--dp-card); color: var(--dp-text); font-size: 22px; font-weight: 500; --h: 64px; }
-.dp-row--slate:hover { background: color-mix(in srgb, var(--dp-card), white 6%); }
-.dp-row--slate .dp-row__chevron { color: var(--dp-text); }
+.dp-row--slate {
+  --h: 64px;
+  background: var(--dp-card);
+  border: 1px solid var(--dp-card-edge);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: var(--dp-text);
+  font-size: 21px;
+  border-radius: min(20px, calc(var(--h) * 20 / 56));
+}
+.dp-row--slate:hover { background: var(--dp-card); filter: brightness(1.12); }
+.dp-row--slate.is-focused,
+.dp-row--slate:focus-visible { background: var(--dp-focus-fill); filter: none; border-color: transparent; }
+.dp-row--slate .dp-row__chevron { color: var(--dp-text-secondary); }
 
 /* ---------- Switch ---------- */
 
@@ -305,7 +363,10 @@
 [aria-checked="true"]:active > .dp-switch::after { transform: translateX(calc(var(--w) - var(--knob) - 12px)); }
 .dp-row.is-focused .dp-switch:not([aria-checked="true"]),
 .dp-row:focus-visible .dp-switch:not([aria-checked="true"]) { background: #c4cad6; }
-[aria-checked="true"].is-focused > .dp-switch { background: #2f9e5a; }
+[aria-checked="true"].is-focused > .dp-switch,
+[aria-checked="true"]:focus-visible > .dp-switch { background: var(--dp-brand-deep); }
+[aria-checked="true"] > .dp-switch,
+.dp-switch[aria-checked="true"] { box-shadow: 0 0 16px -4px var(--dp-brand-glow); }
 
 /* ---------- Segmented control ---------- */
 
@@ -493,8 +554,29 @@
     color var(--dp-dur-fast) var(--dp-ease-out),
     transform var(--dp-dur-base) var(--dp-ease-spring);
 }
+.dp-rail__item { position: relative; }
+.dp-rail__item::before {
+  /* The app's 4dp accent bar on the selected category, in brand green. */
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  border-radius: 3px;
+  background: var(--dp-brand-strong);
+  box-shadow: 0 0 10px var(--dp-brand-glow);
+  transform: translateY(-50%);
+  transition: height var(--dp-dur-base) var(--dp-ease-spring);
+}
 .dp-rail__item:hover { color: var(--dp-text); background: var(--dp-surface); }
-.dp-rail__item[aria-current="page"] { color: var(--dp-text); background: var(--dp-surface-2); }
+.dp-rail__item[aria-current="page"] { color: var(--dp-text); background: var(--dp-surface-2); box-shadow: var(--dp-highlight); }
+.dp-rail__item[aria-current="page"]::before { height: 22px; }
+.dp-rail__item[aria-current="page"] .dp-glyph { color: var(--dp-brand-strong); }
+.dp-rail__item.is-focused::before,
+.dp-rail__item:focus-visible::before { height: 0; }
+.dp-rail__item.is-focused .dp-glyph,
+.dp-rail__item:focus-visible .dp-glyph { color: inherit; }
 .dp-rail__item:focus-visible,
 .dp-rail__item.is-focused {
   background: var(--dp-focus-fill);

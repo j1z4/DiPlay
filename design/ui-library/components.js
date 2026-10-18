@@ -276,8 +276,61 @@
     });
   }
 
+  /* ---------- Logo mark and splash trace ---------- */
+
+  // Same path as brand/diplay-mark.svg (viewBox 0 0 150 148).
+  const MARK_PATH =
+    "M58.0615 0C54.0815 0 50.8035 3.28714 50.8035 7.2785V38.1089C50.8035 38.9159 50.406 39.6654 49.7407 40.1181C49.0746 40.5708 48.2344 40.6627 47.4867 40.3641L22.9912 30.186C22.0721 29.8037 21.113 29.6314 20.1702 29.6412C17.3425 29.6704 14.65 31.3633 13.5073 34.1287L0.54667 65.5079C-0.976196 69.1951 0.794 73.4982 4.47372 75.0189L34.1829 87.3013C34.8644 87.5843 35.3763 88.1591 35.5815 88.87C35.7867 89.5804 35.6571 90.3365 35.2316 90.9406L15.7831 115.624C13.3605 118.79 13.9632 123.402 17.1202 125.831L43.9929 146.511C47.1496 148.94 51.7489 148.331 54.1711 145.165L73.0819 121.159C73.5407 120.559 74.2461 120.211 75.0002 120.211C75.7538 120.211 76.4592 120.559 76.9179 121.159L95.8288 145.165C98.2514 148.331 102.849 148.94 106.007 146.511L132.88 125.831C136.037 123.402 136.64 118.791 134.217 115.624L114.768 90.9406C114.343 90.3374 114.214 89.5804 114.418 88.87C114.624 88.1591 115.136 87.5843 115.817 87.3013L145.526 75.0189C149.206 73.4982 150.976 69.1963 149.453 65.5079L136.491 34.1287C135.349 31.3635 132.656 29.6706 129.829 29.6412C128.886 29.6315 127.927 29.8048 127.008 30.186L102.512 40.3641C101.765 40.6631 100.924 40.5708 100.258 40.1181C99.5892 39.6654 99.1917 38.9159 99.1917 38.1089V7.2785C99.1917 3.28714 95.9141 0 91.9341 0H58.0615Z";
+  let markId = 0;
+
+  function gradient(id) {
+    return `<linearGradient id="${id}" x1="75" y1="0" x2="75" y2="148" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3DFF6E"/><stop offset="0.55" stop-color="#0E9E3E"/><stop offset="1" stop-color="#021A0C"/></linearGradient>`;
+  }
+
+  /** The mark as an inline SVG string. `mono` fills with currentColor. */
+  function mark({ mono = false, className = "" } = {}) {
+    const id = `dp-mark-${++markId}`;
+    return `<svg class="dp-mark ${className}" viewBox="0 0 150 148" aria-hidden="true">
+      ${mono ? "" : `<defs>${gradient(id)}</defs>`}
+      <path fill="${mono ? "currentColor" : `url(#${id})`}" fill-rule="evenodd" d="${MARK_PATH}"/></svg>`;
+  }
+
+  /** The splash trace (see brand/diplay-splash-trace.svg); components.css animates it. */
+  function splash() {
+    const id = `dp-splash-${++markId}`;
+    return `<svg class="dp-splash__svg" viewBox="-15 -15 180 178" aria-hidden="true">
+      <defs><path id="${id}-p" pathLength="1" d="${MARK_PATH}"/>${gradient(`${id}-f`)}
+        <linearGradient id="${id}-s" x1="75" y1="0" x2="75" y2="148" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#3DFF6E"/></linearGradient>
+        <filter id="${id}-b" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+      <use href="#${id}-p" class="dp-splash__fill" fill="url(#${id}-f)" fill-rule="evenodd"/>
+      <use href="#${id}-p" class="dp-splash__glow" stroke="#3DFF6E" stroke-width="6" stroke-linejoin="round" filter="url(#${id}-b)"/>
+      <use href="#${id}-p" class="dp-splash__trace" stroke="url(#${id}-s)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  }
+
+  function replaySplash(el) {
+    el.classList.remove("is-playing");
+    void el.offsetWidth;
+    el.classList.add("is-playing");
+  }
+
+  function hydrateBrand(root) {
+    root.querySelectorAll("i[data-dp-mark]").forEach((i) => {
+      i.insertAdjacentHTML("afterend", mark({ mono: i.dataset.dpMark === "mono", className: i.className }));
+      const style = i.getAttribute("style");
+      if (style) i.nextElementSibling.setAttribute("style", style);
+      i.remove();
+    });
+    root.querySelectorAll("[data-dp-splash]:not([data-ready])").forEach((el) => {
+      el.dataset.ready = "";
+      el.insertAdjacentHTML("afterbegin", splash());
+      replaySplash(el);
+    });
+  }
+
   function init(root = document) {
     hydrateIcons(root);
+    hydrateBrand(root);
     root.querySelectorAll(".dp-segmented").forEach(placeThumb);
     root.querySelectorAll(".dp-slider input[type=range]").forEach(paintSlider);
   }
@@ -330,5 +383,5 @@
   document.fonts?.ready.then(() => init());
   document.addEventListener("DOMContentLoaded", () => init());
 
-  window.DP = { init, toggle, select, setValue, toast, dialog, focus, press, icon };
+  window.DP = { init, toggle, select, setValue, toast, dialog, focus, press, icon, mark, replaySplash };
 })();

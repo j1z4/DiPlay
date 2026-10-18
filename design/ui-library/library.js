@@ -64,7 +64,10 @@
 
   const heroHost = document.getElementById("hero-screen");
   heroHost.style.pointerEvents = "none";
-  DPPrototype.mount(heroHost, { interactive: false });
+  DPPrototype.mount(heroHost, { interactive: false, start: location.hash.length > 1 ? "home" : "splash" });
+
+  document.getElementById("logo-replay").addEventListener("click", () => DP.replaySplash(document.getElementById("logo-splash")));
+  let walkthroughSeen = false;
 
   document.getElementById("proto-bar").addEventListener("click", (e) => {
     const go = e.target.closest("[data-go]");
@@ -93,10 +96,15 @@
     window.scrollTo({ top: 0, behavior: "instant" });
     DP.init(page); // segmented thumbs need the page visible to measure
     if (page.dataset.page === "walkthrough") {
+      // The first visit boots like the car: splash, then Home.
       if (screen) app.go(screen);
+      else if (!walkthroughSeen) app.go("splash");
+      walkthroughSeen = true;
       app.activate();
+    } else {
+      app.deactivate();
     }
-    else app.deactivate();
+    if (page.dataset.page === "logo") DP.replaySplash(document.getElementById("logo-splash"));
   }
   addEventListener("hashchange", route);
 
@@ -111,6 +119,12 @@
       <div><div class="lib-swatch__name">${name}</div>
       <div class="lib-swatch__meta">${token}<br>${css.getPropertyValue(token).trim()}${note ? ` · ${note}` : ""}</div></div>
     </div>`;
+  document.getElementById("sw-brand").innerHTML = [
+    swatch("--dp-brand", "Signal", "mark top, glows"),
+    swatch("--dp-brand-strong", "Accent", "on, connected, focus ring"),
+    swatch("--dp-brand-deep", "Deep", "pressed, focused switch"),
+    swatch("--dp-brand-ink", "Ink", "mark bottom"),
+  ].join("");
   document.getElementById("sw-surface").innerHTML = [
     swatch("--dp-bg", "Canvas", "true black"),
     swatch("--dp-bg-raised", "Raised", "dialogs"),

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DiPlay splash trace as an AnimatedVectorDrawable (API 24+ for the gradient fill).
+  For the Android 12+ SplashScreen API, copy to common/src/main/res/drawable/ and set:
+    <item name="android:windowSplashScreenAnimatedIcon">@drawable/avd_diplay_splash</item>
+    <item name="android:windowSplashScreenAnimationDuration">1000</item>
+    <item name="android:windowSplashScreenBackground">#000000</item>
+  The 288dp canvas follows the splash icon spec; the mark (120 units wide) sits inside the 192dp safe circle.
+  Timeline (1000 ms): outline traces 0-700, fill fades in 500-900, outline fades 750-1000.
+-->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="288dp"
+            android:height="288dp"
+            android:viewportWidth="288"
+            android:viewportHeight="288">
+            <group
+                android:name="mark"
+                android:translateX="84"
+                android:translateY="84.8"
+                android:scaleX="0.8"
+                android:scaleY="0.8">
+                <group
+                    android:name="settle"
+                    android:pivotX="75"
+                    android:pivotY="74"
+                    android:scaleX="0.96"
+                    android:scaleY="0.96">
+                    <path
+                        android:name="fill"
+                        android:fillAlpha="0"
+                        android:fillType="evenOdd"
+                        android:pathData="@string/diplay_mark_path">
+                        <aapt:attr name="android:fillColor">
+                            <gradient
+                                android:type="linear"
+                                android:startX="75"
+                                android:startY="0"
+                                android:endX="75"
+                                android:endY="148">
+                                <item android:offset="0" android:color="#FF3DFF6E" />
+                                <item android:offset="0.55" android:color="#FF0E9E3E" />
+                                <item android:offset="1" android:color="#FF021A0C" />
+                            </gradient>
+                        </aapt:attr>
+                    </path>
+                    <path
+                        android:name="trace"
+                        android:strokeColor="#FFFFFFFF"
+                        android:strokeWidth="2.6"
+                        android:strokeLineJoin="round"
+                        android:strokeLineCap="round"
+                        android:trimPathEnd="0"
+                        android:pathData="@string/diplay_mark_path" />
+                </group>
+            </group>
+        </vector>
+    </aapt:attr>
+
+    <target android:name="trace">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="trimPathEnd"
+                    android:duration="700"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:valueType="floatType"
+                    android:interpolator="@android:interpolator/fast_out_slow_in" />
+                <objectAnimator
+                    android:propertyName="strokeAlpha"
+                    android:startOffset="750"
+                    android:duration="250"
+                    android:valueFrom="1"
+                    android:valueTo="0"
+                    android:valueType="floatType"
+                    android:interpolator="@android:interpolator/fast_out_linear_in" />
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="fill">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="fillAlpha"
+                android:startOffset="500"
+                android:duration="400"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType"
+                android:interpolator="@android:interpolator/linear_out_slow_in" />
+        </aapt:attr>
+    </target>
+
+    <target android:name="settle">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="scaleX"
+                    android:startOffset="500"
+                    android:duration="400"
+                    android:valueFrom="0.96"
+                    android:valueTo="1"
+                    android:valueType="floatType"
+                    android:interpolator="@android:interpolator/linear_out_slow_in" />
+                <objectAnimator
+                    android:propertyName="scaleY"
+                    android:startOffset="500"
+                    android:duration="400"
+                    android:valueFrom="0.96"
+                    android:valueTo="1"
+                    android:valueType="floatType"
+                    android:interpolator="@android:interpolator/linear_out_slow_in" />
+            </set>
+        </aapt:attr>
+    </target>
+</animated-vector>

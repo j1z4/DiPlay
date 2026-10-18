@@ -256,6 +256,22 @@
   /* ---------- Screens ---------- */
 
   const SCREENS = {
+    // The splash trace, then the wordmark rises and Home takes over.
+    splash: {
+      html: () => `
+        <div class="scr-splash">
+          <div class="dp-splash" data-dp-splash>
+            <div class="dp-splash__after dp-wordmark">
+              <div class="dp-wordmark__name">DiPlay</div>
+              <div class="dp-wordmark__tagline">CarPlay, that you own.</div>
+            </div>
+          </div>
+        </div>`,
+      mount(el, ctx) {
+        ctx.later(() => ctx.home(), 3400);
+      },
+    },
+
     home: {
       html: (s) => {
         const st = statusOf(s);
@@ -278,6 +294,7 @@
         <div class="scr-home__rule"></div>
         <div class="scr-home__right">
           <div class="dp-wordmark">
+            <i data-dp-mark class="dp-wordmark__mark"></i>
             <div class="dp-wordmark__name">DiPlay</div>
             <div class="dp-wordmark__tagline">CarPlay, that you own.</div>
           </div>
@@ -626,7 +643,7 @@
       go: (name) => {
         if (!SCREENS[name]) return;
         stack.length = 0;
-        if (name !== "home") stack.push({ name: "home", params: {} });
+        if (name !== "home" && name !== "splash") stack.push({ name: "home", params: {} });
         if (name === "failed") state.connected = false;
         stack.push({ name, params: {} });
         render(name, {});
