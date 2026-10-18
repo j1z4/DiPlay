@@ -3,6 +3,8 @@
   "use strict";
 
   const pages = [...document.querySelectorAll(".lib-page")];
+  // ?embed=1 shows only the walkthrough frame (used by the live pair on Before & after).
+  if (new URLSearchParams(location.search).get("embed") === "1") document.documentElement.classList.add("lib-embed");
   const nav = document.getElementById("nav");
 
   /* ---------- Code snippets (captured before icons are hydrated) ---------- */
@@ -61,6 +63,7 @@
 
   const protoHost = document.getElementById("proto");
   const app = DPPrototype.mount(protoHost, { interactive: true });
+  window.DP_APP = app; // for selftest.html
 
   const heroHost = document.getElementById("hero-screen");
   heroHost.style.pointerEvents = "none";
@@ -104,7 +107,11 @@
     } else {
       app.deactivate();
     }
-    if (page.dataset.page === "logo") DP.replaySplash(document.getElementById("logo-splash"));
+    if (page.dataset.page === "logo") {
+      DP.replaySplash(document.getElementById("logo-splash"));
+      playLottie();
+    }
+    if (page.dataset.page === "compare") loadLivePair();
   }
   addEventListener("hashchange", route);
 
@@ -171,8 +178,9 @@
 
   /* ---------- Icons ---------- */
 
+  // Each tile: the app's own drawable, then the Phosphor glyph that replaces it.
   document.getElementById("icon-grid").innerHTML = Object.keys(window.DP_ICONS)
-    .map((n) => `<div class="lib-icon"><i data-dp-icon="${n}"></i><span>${n}</span></div>`)
+    .map((n) => `<div class="lib-icon"><div class="lib-icon__pair"><i data-dp-icon="${n}" data-dp-icon-set="app"></i><i data-dp-icon="${n}"></i></div><span>${n}</span></div>`)
     .join("");
 
   /* ---------- Steps demo ---------- */
@@ -185,6 +193,79 @@
       d.classList.toggle("is-current", i === step);
     });
     document.getElementById("steps-demo").setAttribute("aria-label", `Step ${step + 1} of 5`);
+  });
+
+  /* ---------- Lottie (Logo page) ---------- */
+
+  let lottieAnim = null;
+  function playLottie() {
+    const gsapSplash = document.getElementById("logo-splash-gsap");
+    DP.replaySplash(gsapSplash);
+    if (!window.lottie || !window.OPENPLAY_SPLASH_LOTTIE || DP.libs.off) {
+      document.getElementById("logo-lottie-note").textContent = "lottie-web did not load (offline or ?libs=off)";
+      return;
+    }
+    if (!lottieAnim) {
+      lottieAnim = window.lottie.loadAnimation({
+        container: document.getElementById("logo-lottie"),
+        renderer: "svg",
+        loop: false,
+        autoplay: true,
+        animationData: window.OPENPLAY_SPLASH_LOTTIE,
+      });
+    } else {
+      lottieAnim.goToAndPlay(0, true);
+    }
+  }
+  document.getElementById("logo-replay-both").addEventListener("click", playLottie);
+
+  /* ---------- Before / after sliders ---------- */
+
+  document.querySelectorAll(".cmp").forEach((cmp) => {
+    cmp.innerHTML = `
+      <img src="${cmp.dataset.before}" alt="Before" loading="lazy">
+      <img class="cmp__after" src="${cmp.dataset.after}" alt="After" loading="lazy">
+      <span class="cmp__handle"></span>
+      <span class="cmp__tag cmp__tag--before">Before</span>
+      <span class="cmp__tag cmp__tag--after">After</span>`;
+    cmp.tabIndex = 0;
+    cmp.setAttribute("role", "slider");
+    cmp.setAttribute("aria-label", "Before and after divider");
+    const set = (pct) => {
+      const p = Math.max(0, Math.min(100, pct));
+      cmp.style.setProperty("--pos", `${p}%`);
+      cmp.setAttribute("aria-valuenow", String(Math.round(p)));
+    };
+    const fromPointer = (e) => {
+      const r = cmp.getBoundingClientRect();
+      set(((e.clientX - r.left) / r.width) * 100);
+    };
+    cmp.addEventListener("pointerdown", (e) => {
+      cmp.setPointerCapture(e.pointerId);
+      fromPointer(e);
+    });
+    cmp.addEventListener("pointermove", (e) => cmp.hasPointerCapture(e.pointerId) && fromPointer(e));
+    cmp.addEventListener("keydown", (e) => {
+      const now = Number(cmp.getAttribute("aria-valuenow") || 50);
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        set(now + (e.key === "ArrowRight" ? 5 : -5));
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+    set(50);
+  });
+
+  /* ---------- Live pair (loaded only when the page opens) ---------- */
+
+  function loadLivePair(restart = false) {
+    document.querySelectorAll(".cmp-live iframe").forEach((f) => {
+      if (restart || !f.getAttribute("src")) f.src = f.dataset.src;
+    });
+  }
+  document.getElementById("cmp-replay").addEventListener("click", () => {
+    document.querySelectorAll(".cmp-live iframe").forEach((f) => f.removeAttribute("src"));
+    requestAnimationFrame(() => loadLivePair(true));
   });
 
   DP.init();

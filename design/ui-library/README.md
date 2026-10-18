@@ -31,6 +31,24 @@ You can deep-link to a screen with `#walkthrough/home`, `connecting`, `failed`, 
 | `library.css`, `library.js`, `index.html` | The library site itself |
 | `selftest.html` | A headless check of the D-pad flow (rail, pane, picker, dialog, connect) |
 
+## Libraries
+
+All are loaded from jsDelivr at pinned versions, and each one is optional: without it (offline, or with `?libs=off`) the page falls back to the plain CSS and Web Animations version.
+
+| Library | Version | Used for |
+| --- | --- | --- |
+| GSAP + Flip + DrawSVG | 3.13.0 | The splash trace (glow trails the stroke) and the splash → Home morph |
+| Motion | 11.18.2 | Spring physics for focus and press (`SPRING` in `components.js`) |
+| View Transitions API | browser | Screen push / pop in the walkthrough (`render()` in `prototype.js`) |
+| Phosphor (bold) | 2.1.1 | Icons; `PHOSPHOR` in `components.js` maps app icon names to glyphs |
+| lottie-web (light) | 5.12.2 | Plays `brand/openplay-splash.json` on the Logo page |
+
+URL switches: `?libs=off` turns every library off; `?embed=1` shows only the walkthrough frame (used by the live pair on **Before & after**).
+
+## Before & after
+
+The **Before & after** page compares screenshots of the previous version (`compare/before-*.png`) with this one (`compare/after-*.png`), and runs both live side by side (`?libs=off` on the left). `compare/original-app-settings.png` is the original app's in-CarPlay menu, from `docs/screenshots/`.
+
 ## Logo and splash (`brand/`)
 
 | File | Use |
@@ -38,6 +56,7 @@ You can deep-link to a screen with `#walkthrough/home`, `connecting`, `failed`, 
 | `diplay-mark.svg` | The mark, cleaned from `~/bootanimation/logo.svg` (one path, without the Figma stroke mask) |
 | `diplay-mark-outline.svg` | The outline only, to trace in other tools |
 | `diplay-splash-trace.svg` | The animated trace (2.6 s), self-contained; open it in a browser |
+| `openplay-splash.json` (+ `.lottie.js`) | The trace as a Lottie animation for lottie-web, lottie-android and boot-animation frames. Regenerate with `python3 design/ui-library/brand/build_lottie.py` |
 | `avd_diplay_splash.xml` + `diplay_mark_path.xml` | The Android 12+ splash icon (AnimatedVectorDrawable, 1000 ms). Copy them to `res/drawable/` and `res/values/` |
 
 In pages, `<i data-dp-mark>` renders the mark (`data-dp-mark="mono"` for one color), and `<div data-dp-splash>` renders the trace. `DP.replaySplash(el)` plays it again.

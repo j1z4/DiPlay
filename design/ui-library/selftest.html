@@ -2,7 +2,7 @@
 <meta charset="utf-8">
 <body>
 <pre id="log"></pre>
-<iframe id="f" src="index.html#walkthrough/settings" style="width:1440px;height:1000px"></iframe>
+<iframe id="f" style="width:1440px;height:1000px"></iframe>
 <script>
 const out = [];
 const log = (ok, msg) => { out.push(`${ok ? "PASS" : "FAIL"} ${msg}`); document.getElementById("log").textContent = out.join("\n"); };
@@ -12,7 +12,15 @@ document.getElementById("f").addEventListener("load", async () => {
     await wait(800);
     const w = document.getElementById("f").contentWindow;
     const d = w.document;
-    const key = async (k, n = 1) => { for (let i = 0; i < n; i++) { d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true })); await wait(60); } await wait(120); };
+    // Screen swaps run inside View Transitions, which apply the DOM change a frame later.
+    // Count running transitions so each step waits for its screen, like a driver would.
+    let transitions = 0;
+    if (d.startViewTransition) {
+      const start = d.startViewTransition.bind(d);
+      d.startViewTransition = (cb) => { const t = start(cb); transitions++; t.finished.finally(() => transitions--); return t; };
+    }
+    const settle = async () => { for (let i = 0; i < 300 && transitions > 0; i++) await wait(10); };
+    const key = async (k, n = 1) => { for (let i = 0; i < n; i++) { d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true })); await wait(60); await settle(); } await wait(120); await settle(); };
     const fid = () => w.DP.focus.current?.dataset.fid || w.DP.focus.current?.textContent.trim();
     const screen = () => d.querySelector("#proto > .scr").className;
 
@@ -41,11 +49,12 @@ document.getElementById("f").addEventListener("load", async () => {
 
     w.location.hash = "walkthrough/connecting";
     await wait(6500);
-    log(screen().includes("scr-home") && d.querySelector("#proto .dp-status").textContent.includes("connected"), `connect flow ends on home, connected (${d.querySelector("#proto .dp-status").textContent})`);
+    log(screen().includes("scr-home") && d.querySelector("#proto .dp-card__status").textContent.includes("connected") && d.querySelector("#proto .dp-card__item--status").dataset.tone === "connected", `connect flow ends on home, connected (${d.querySelector("#proto .dp-card__status").textContent.trim()}, tone ${d.querySelector("#proto .dp-card__item--status").dataset.tone})`);
     log(!!d.querySelector("#proto .dp-toast"), "toast shown after connecting");
 
     w.location.hash = "walkthrough/failed";
     await wait(300);
+    await settle();
     await key("ArrowRight");
     await key("Enter");
     await wait(500);
@@ -56,6 +65,7 @@ document.getElementById("f").addEventListener("load", async () => {
 
     w.location.hash = "walkthrough/setup";
     await wait(300);
+    await settle();
     await key("ArrowDown", 2);
     await key("Enter");
     log(d.querySelector('#proto [aria-checked="true"]')?.textContent.trim() === "DiLink 5", "setup choice selects DiLink 5");
@@ -69,12 +79,15 @@ document.getElementById("f").addEventListener("load", async () => {
     });
     const splashAt = pick(d.querySelector("#proto .scr-splash"));
     for (let i = 0; i < 200 && !d.querySelector("#proto .scr-home"); i++) await wait(10);
-    const anims = d.getAnimations();
+    const tl = w.DP_APP.morph;
+    const anims = tl ? [] : d.getAnimations();
+    if (tl) tl.pause().progress(0);
     anims.forEach((a) => a.pause());
     anims.forEach((a) => (a.currentTime = 0));
     const atStart = pick(d.querySelector("#proto .scr-home"));
     const off = splashAt.map((b, i) => Math.max(Math.abs(b.x - atStart[i].x), Math.abs(b.y - atStart[i].y), Math.abs(b.w - atStart[i].w)));
     log(!d.querySelector("#proto .scr-splash") && off.every((o) => o < 1.5), `morph starts exactly on the splash layout (max offset ${off.map((o) => o.toFixed(2)).join(" / ")} px)`);
+    if (tl) tl.progress(1);
     anims.filter((a) => a.effect?.getComputedTiming().endTime !== Infinity).forEach((a) => a.finish());
     const landed = pick(d.querySelector("#proto .scr-home"));
     const moved = landed.map((l, i) => Math.hypot(l.x - splashAt[i].x, l.y - splashAt[i].y));
@@ -82,6 +95,7 @@ document.getElementById("f").addEventListener("load", async () => {
 
     w.location.hash = "controls";
     await wait(300);
+    await settle();
     const thumb = d.querySelector(".dp-segmented__thumb");
     const cur = thumb.parentElement.querySelector('[aria-checked="true"]');
     log(Math.abs(thumb.offsetWidth - cur.offsetWidth) < 2, `segmented thumb matches option width (${thumb.offsetWidth}/${cur.offsetWidth})`);
@@ -92,4 +106,6 @@ document.getElementById("f").addEventListener("load", async () => {
   document.getElementById("log").textContent = out.join("\n") + "\nDONE";
 });
 window.addEventListener("error", (e) => out.push("ERROR " + e.message));
+// selftest.html?libs=off runs the same checks against the no-library fallbacks.
+document.getElementById("f").src = "index.html" + location.search + "#walkthrough/settings";
 </script>

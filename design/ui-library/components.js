@@ -9,6 +9,25 @@
 
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
+  /*
+   * Optional libraries, loaded from the CDN in index.html. Each one has a plain fallback,
+   * so the page still works offline or with ?libs=off (used by the before/after page):
+   *   GSAP + Flip + DrawSVG  the splash trace and the splash -> Home morph
+   *   Motion                 spring physics for focus and press
+   *   View Transitions       screen push / pop (browser API, used in prototype.js)
+   *   Phosphor               one consistent icon family
+   */
+  const libsOff = new URLSearchParams(location.search).get("libs") === "off";
+  const libs = {
+    off: libsOff,
+    gsap: !libsOff && window.gsap && window.Flip && window.DrawSVGPlugin ? window.gsap : null,
+    motion: !libsOff && window.Motion?.animate ? window.Motion : null,
+    phosphor: !libsOff && !!document.querySelector("link[data-phosphor]"),
+    viewTransitions: !libsOff && typeof document.startViewTransition === "function",
+  };
+  if (libs.gsap) libs.gsap.registerPlugin(window.Flip, window.DrawSVGPlugin);
+  document.documentElement.classList.toggle("dp-libs", !libsOff);
+
   const icon = (name) => {
     const paths = {
       chevron: '<path d="M9 5l7 7-7 7"/>',
@@ -173,10 +192,14 @@
 
     set(el, { scroll = true } = {}) {
       if (this.current === el) return;
-      this.current?.classList.remove("is-focused");
+      if (this.current) {
+        this.current.classList.remove("is-focused");
+        spring(this.current, 1, SPRING.rest);
+      }
       this.current = el;
       if (!el) return;
       el.classList.add("is-focused");
+      spring(el, focusScale(el), SPRING.focus);
       el.dispatchEvent(new CustomEvent("dp-focus", { bubbles: true }));
       if (scroll) reveal(el);
     },
@@ -256,15 +279,49 @@
   function press(el) {
     if (!el) return;
     el.classList.add("is-pressed");
-    setTimeout(() => el.classList.remove("is-pressed"), 120);
+    spring(el, 0.96, SPRING.press);
+    setTimeout(() => {
+      el.classList.remove("is-pressed");
+      spring(el, el.classList.contains("is-focused") ? focusScale(el) : 1, SPRING.focus);
+    }, 120);
     el.click();
   }
 
+  // Mouse and touch presses, and keyboard focus outside the D-pad engine, get springs too.
+  document.addEventListener("pointerdown", (e) => spring(e.target.closest?.(SPRING_TARGETS), 0.96, SPRING.press));
+  const release = (e) => {
+    const el = e.target.closest?.(SPRING_TARGETS);
+    if (el) spring(el, el.classList.contains("is-focused") || el.matches(":focus-visible") ? focusScale(el) : 1, SPRING.focus);
+  };
+  document.addEventListener("pointerup", release);
+  document.addEventListener("pointercancel", release);
+  document.addEventListener("focusin", (e) => e.target.matches?.(":focus-visible") && spring(e.target, focusScale(e.target), SPRING.focus));
+  document.addEventListener("focusout", (e) => !e.target.classList?.contains("is-focused") && spring(e.target, 1, SPRING.rest));
+
   /* ---------- Wiring ---------- */
 
-  // <i data-dp-icon="name"> becomes the app's vector icon from icons.js.
+  // App icon name -> Phosphor (bold). One family, one stroke weight, readable at arm's length.
+  const PHOSPHOR = {
+    about: "info", advanced: "gear-six", audio: "speaker-high", automation: "lightning",
+    back: "arrow-left", car: "car", chevron: "caret-right", connection: "wifi-high",
+    controls: "sliders-horizontal", dashboard: "gauge", day: "sun", diagnostics: "file-text",
+    display: "monitor", home: "house", language: "globe", navigation: "navigation-arrow",
+    night: "moon", overview: "squares-four", permissions: "check-circle", search: "magnifying-glass",
+    vehicle: "car-profile",
+  };
+
+  // <i data-dp-icon="name"> becomes a Phosphor glyph, or the app's own vector from icons.js
+  // when Phosphor is off or the element asks for data-dp-icon-set="app".
   function hydrateIcons(root) {
     root.querySelectorAll("i[data-dp-icon]").forEach((i) => {
+      const ph = PHOSPHOR[i.dataset.dpIcon];
+      if (libs.phosphor && ph && i.dataset.dpIconSet !== "app") {
+        const glyph = document.createElement("i");
+        glyph.className = `ph-bold ph-${ph} dp-glyph dp-ph ${i.className}`.trim();
+        glyph.setAttribute("aria-hidden", "true");
+        i.replaceWith(glyph);
+        return;
+      }
       const paths = window.DP_ICONS?.[i.dataset.dpIcon];
       if (!paths) return;
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -299,20 +356,73 @@
   /** The splash trace (see brand/diplay-splash-trace.svg); components.css animates it. */
   function splash() {
     const id = `dp-splash-${++markId}`;
+    // Real <path>s, not <use>, so GSAP's DrawSVG can measure them. pathLength="1" serves the
+    // CSS fallback and is removed when GSAP runs (DrawSVG works in real lengths).
     return `<svg class="dp-splash__svg" viewBox="-15 -15 180 178" aria-hidden="true">
-      <defs><path id="${id}-p" pathLength="1" d="${MARK_PATH}"/>${gradient(`${id}-f`)}
+      <defs>${gradient(`${id}-f`)}
         <linearGradient id="${id}-s" x1="75" y1="0" x2="75" y2="148" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#3DFF6E"/></linearGradient>
         <filter id="${id}-b" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3"/></filter></defs>
-      <use href="#${id}-p" class="dp-splash__fill" fill="url(#${id}-f)" fill-rule="evenodd"/>
-      <use href="#${id}-p" class="dp-splash__glow" stroke="#3DFF6E" stroke-width="6" stroke-linejoin="round" filter="url(#${id}-b)"/>
-      <use href="#${id}-p" class="dp-splash__trace" stroke="url(#${id}-s)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+      <path class="dp-splash__fill" fill="url(#${id}-f)" fill-rule="evenodd" d="${MARK_PATH}"/>
+      <path class="dp-splash__glow" pathLength="1" stroke="#3DFF6E" stroke-width="6" stroke-linejoin="round" filter="url(#${id}-b)" d="${MARK_PATH}"/>
+      <path class="dp-splash__trace" pathLength="1" stroke="url(#${id}-s)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" d="${MARK_PATH}"/></svg>`;
   }
 
+  /*
+   * Same 2.6 s timeline as brand/diplay-splash-trace.svg. With GSAP the glow trails the
+   * stroke by 80 ms like light following a pen, and the fill settles on an expo curve.
+   * Returns the GSAP timeline (or null when the CSS fallback runs).
+   */
   function replaySplash(el) {
+    const gsap = libs.gsap;
+    if (!gsap || reduceMotion.matches) {
+      el.classList.remove("is-playing", "is-gsap");
+      void el.offsetWidth;
+      el.classList.add("is-playing");
+      return null;
+    }
+    el._dpTimeline?.kill();
     el.classList.remove("is-playing");
-    void el.offsetWidth;
-    el.classList.add("is-playing");
+    el.classList.add("is-gsap");
+    const trace = el.querySelector(".dp-splash__trace");
+    const glow = el.querySelector(".dp-splash__glow");
+    const fill = el.querySelector(".dp-splash__fill");
+    const after = el.querySelectorAll(".dp-splash__after");
+    [trace, glow].forEach((p) => p.removeAttribute("pathLength"));
+    const tl = gsap.timeline();
+    tl.set([trace, glow], { opacity: 1 })
+      .fromTo(trace, { drawSVG: "0% 0%" }, { drawSVG: "0% 100%", duration: 1.6, ease: "power2.inOut" }, 0)
+      .fromTo(glow, { drawSVG: "0% 0%" }, { drawSVG: "0% 100%", duration: 1.6, ease: "power2.inOut" }, 0.08)
+      .fromTo(fill, { opacity: 0, scale: 0.96, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.8, ease: "expo.out" }, 1.25)
+      .to([trace, glow], { opacity: 0, duration: 0.8, ease: "power1.in" }, 1.8);
+    if (after.length) tl.fromTo(after, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.7, ease: "expo.out" }, 1.9);
+    el._dpTimeline = tl;
+    return tl;
   }
+
+  /* ---------- Springs (Motion) ---------- */
+
+  /*
+   * With Motion loaded, focus and press use real spring physics instead of a cubic-bezier,
+   * so an interrupted move (a fast D-pad sweep) carries its velocity instead of snapping.
+   * CSS still draws everything else; html.dp-springs only hands the scale to Motion.
+   */
+  const SPRING_TARGETS = ".dp-btn, .dp-row:not(.dp-row--info):not(.scr-segment-row), .dp-card__item, .dp-rail__item";
+  const SPRING = {
+    focus: { type: "spring", stiffness: 420, damping: 24, mass: 0.9 },
+    rest: { type: "spring", stiffness: 380, damping: 30 },
+    press: { type: "spring", stiffness: 900, damping: 38 },
+  };
+
+  function spring(el, scale, opts) {
+    if (!libs.motion || reduceMotion.matches || !el?.matches?.(SPRING_TARGETS)) return;
+    try {
+      libs.motion.animate(el, { scale }, opts);
+    } catch {
+      // A Motion API change should never break focus; CSS takes over.
+    }
+  }
+  if (libs.motion) document.documentElement.classList.add("dp-springs");
+  const focusScale = (el) => (el.matches(".dp-card__item") ? 1.02 : el.matches(".dp-rail__item, .dp-btn, .dp-row") ? 1.035 : 1);
 
   function hydrateBrand(root) {
     root.querySelectorAll("i[data-dp-mark]").forEach((i) => {
@@ -383,5 +493,5 @@
   document.fonts?.ready.then(() => init());
   document.addEventListener("DOMContentLoaded", () => init());
 
-  window.DP = { init, toggle, select, setValue, toast, dialog, focus, press, icon, mark, replaySplash };
+  window.DP = { init, toggle, select, setValue, toast, dialog, focus, press, icon, mark, replaySplash, libs };
 })();

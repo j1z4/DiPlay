@@ -724,3 +724,60 @@ body > .dp-toast-stack { position: fixed; }
   .dp-root *::before,
   .dp-root *::after { animation-iteration-count: 1 !important; }
 }
+
+/* ---------- Library modes (see components.js) ---------- */
+
+/* Motion owns the scale of these parts; CSS keeps color, shadow and the ring. */
+.dp-springs :is(.dp-btn, .dp-row, .dp-card__item, .dp-rail__item) {
+  transition-property: background-color, color, box-shadow, filter, border-color;
+}
+.dp-springs :is(.dp-btn, .dp-row, .dp-card__item, .dp-rail__item):is(.is-focused, :focus-visible, :active, .is-pressed) { transform: none; }
+
+/* Phosphor glyphs: same boxes as the app's SVG icons. */
+.dp-ph { display: inline-grid; place-items: center; width: auto; height: auto; font-size: 1.2em; line-height: 1; }
+.dp-row__icon .dp-ph { font-size: 20px; }
+.dp-rail__item .dp-ph { font-size: 22px; }
+.dp-row__chevron.dp-ph { font-size: 18px; width: auto; height: auto; }
+.dp-connecting__core .dp-ph { font-size: 24px; }
+
+/* GSAP drives the splash: start hidden, no CSS keyframes. */
+.dp-splash.is-gsap .dp-splash__trace,
+.dp-splash.is-gsap .dp-splash__glow { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; }
+.dp-splash.is-gsap .dp-splash__fill,
+.dp-splash.is-gsap .dp-splash__after { animation: none; }
+
+/* ---------- Status inside the device card ---------- */
+
+/*
+ * The third item of the card. Color carries the state: neutral when ready, green when
+ * connecting (pulsing) or connected, amber when it needs attention, red when it failed.
+ * The item gets a faint wash of the same color so the state reads from across the cabin.
+ */
+.dp-card__item--status {
+  --tone: var(--dp-text-secondary);
+  cursor: default;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 12%, transparent), transparent 70%);
+}
+.dp-card__item--status:hover { background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 12%, transparent), transparent 70%); }
+.dp-card__item--status[data-tone="waiting"] { --tone: var(--dp-text-secondary); }
+.dp-card__item--status[data-tone="connecting"] { --tone: var(--dp-brand-strong); }
+.dp-card__item--status[data-tone="connected"] { --tone: var(--dp-success); }
+.dp-card__item--status[data-tone="warning"] { --tone: var(--dp-warning); }
+.dp-card__item--status[data-tone="failed"] { --tone: var(--dp-danger); }
+.dp-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: color-mix(in srgb, var(--tone) 70%, var(--dp-text));
+}
+.dp-card__item--status[data-tone="waiting"] .dp-card__status { color: var(--dp-text); }
+.dp-card__dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--tone) 70%, transparent);
+}
+.dp-card__item--status[data-tone="waiting"] .dp-card__dot { animation: dp-breathe 2.4s var(--dp-ease-in-out) infinite; box-shadow: none; }
+.dp-card__item--status[data-tone="connecting"] .dp-card__dot { animation: dp-pulse 1.2s var(--dp-ease-out) infinite; color: var(--tone); }

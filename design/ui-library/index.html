@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Phosphor icons (bold). components.js falls back to the app's own icons with ?libs=off. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" data-phosphor>
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="components.css">
   <link rel="stylesheet" href="screens.css">
@@ -176,7 +178,7 @@
     <section class="lib-page" data-page="icons" data-title="Icons" data-group="Foundations" hidden>
       <div class="lib-eyebrow">Foundations</div>
       <h1>Icons</h1>
-      <p class="lib-lede">These are the app's own <code>ic_dp_*</code> vector drawables, converted to SVG by <code>build_icons.py</code>. Use them with <code>&lt;i data-dp-icon="name"&gt;</code> and they inherit the text color.</p>
+      <p class="lib-lede">Each tile shows the app's own <code>ic_dp_*</code> drawable (left, converted by <code>build_icons.py</code>) and the Phosphor bold glyph that replaces it (right). The app set mixes filled and outline shapes; Phosphor is one family with one stroke weight. Use <code>&lt;i data-dp-icon="name"&gt;</code>. Add <code>data-dp-icon-set="app"</code> to force the original, which is also what you get offline or with <code>?libs=off</code>.</p>
       <div class="lib-stage is-alone"><div class="lib-icons" id="icon-grid"></div></div>
     </section>
 
@@ -199,6 +201,23 @@
       <div class="hu-bar">
         <button class="hu-chip" id="logo-replay">Replay trace</button>
         <span class="lib-hint">2.6 s in the browser · 1.0 s as an Android splash</span>
+      </div>
+
+      <h2>Lottie</h2>
+      <p>The same trace as a Lottie file, <code>brand/openplay-splash.json</code>, generated from the mark's path by <code>brand/build_lottie.py</code>. One file plays in the browser (lottie-web, below), in the app (lottie-android), and can be rendered to frames for <code>bootanimation.zip</code>. Left: GSAP and SVG. Right: the Lottie file.</p>
+      <div class="lib-stage lib-stage--center" style="gap:64px;min-height:300px">
+        <div style="display:grid;justify-items:center;gap:12px">
+          <div class="dp-splash" id="logo-splash-gsap" data-dp-splash style="width:200px"></div>
+          <span class="lib-hint">GSAP + DrawSVG</span>
+        </div>
+        <div style="display:grid;justify-items:center;gap:12px">
+          <div id="logo-lottie" style="width:200px;aspect-ratio:180/178"></div>
+          <span class="lib-hint" id="logo-lottie-note">lottie-web</span>
+        </div>
+      </div>
+      <div class="hu-bar">
+        <button class="hu-chip" id="logo-replay-both">Replay both</button>
+        <a class="hu-chip" href="brand/openplay-splash.json" download>Download openplay-splash.json</a>
       </div>
 
       <h2>Mark</h2>
@@ -367,11 +386,26 @@
             <span class="dp-card__label">Connection</span>
             <span class="dp-card__value">Wi-Fi</span>
           </button>
+          <div class="dp-card__item dp-card__item--status" data-tone="waiting" role="status">
+            <span class="dp-card__label">Status</span>
+            <span class="dp-card__value dp-card__status"><span class="dp-card__dot"></span>Ready to connect</span>
+          </div>
         </div>
         <button class="dp-row dp-row--slate">
           <span class="dp-row__body"><span class="dp-row__label">Settings</span></span>
           <i data-dp-icon="chevron" class="dp-row__chevron"></i>
         </button>
+      </div>
+      <h2>Status</h2>
+      <p>The connection status lives in the card as its last line, so it reads as part of the device rather than floating beside the button. <code>data-tone</code> sets the color: a calm dot when ready, a pulsing green dot while connecting, solid green when connected, amber when it needs attention and red when it failed. A faint wash of the same color runs across the line.</p>
+      <div class="lib-stage lib-stage--col lib-stage--narrow" data-code>
+        <div class="dp-card">
+          <div class="dp-card__item dp-card__item--status" data-tone="waiting"><span class="dp-card__label">Status</span><span class="dp-card__value dp-card__status"><span class="dp-card__dot"></span>Ready to connect</span></div>
+          <div class="dp-card__item dp-card__item--status" data-tone="connecting"><span class="dp-card__label">Status</span><span class="dp-card__value dp-card__status"><span class="dp-card__dot"></span>Connecting…</span></div>
+          <div class="dp-card__item dp-card__item--status" data-tone="connected"><span class="dp-card__label">Status</span><span class="dp-card__value dp-card__status"><span class="dp-card__dot"></span>CarPlay connected</span></div>
+          <div class="dp-card__item dp-card__item--status" data-tone="warning"><span class="dp-card__label">Status</span><span class="dp-card__value dp-card__status"><span class="dp-card__dot"></span>Reconnect to apply changes</span></div>
+          <div class="dp-card__item dp-card__item--status" data-tone="failed"><span class="dp-card__label">Status</span><span class="dp-card__value dp-card__status"><span class="dp-card__dot"></span>Connection interrupted</span></div>
+        </div>
       </div>
       <h2>Wordmark</h2>
       <div class="lib-stage lib-stage--center" data-code>
@@ -543,6 +577,54 @@
       </table>
     </section>
 
+    <section class="lib-page" data-page="compare" data-title="Before &amp; after" data-group="Screens" hidden>
+      <div class="lib-eyebrow">Review</div>
+      <h1>Before and after</h1>
+      <p class="lib-lede">This round moved the status into the device card and brought in GSAP, Motion, View Transitions, Phosphor and Lottie. Drag the handle on each screen to compare, and use the live pair at the bottom to see the motion. Nothing here touches the Android app.</p>
+
+      <h2>Home</h2>
+      <p>The status leaves the floating pill and becomes the card's last line, color-coded, so the right side holds only the brand and the one action.</p>
+      <div class="cmp" data-before="compare/before-home.png" data-after="compare/after-home.png"></div>
+
+      <h2>Home after a failed connection</h2>
+      <p>The same card line turns red after a failure. Before, nothing on Home showed it.</p>
+      <div class="cmp" data-before="compare/before-home.png" data-after="compare/after-home-failed.png"></div>
+
+      <h2>Settings</h2>
+      <p>Phosphor replaces the app's mixed filled and outline icons with one bold family. The original app's in-CarPlay menu is on the far left for reference.</p>
+      <div class="cmp-row">
+        <figure class="cmp-ref"><img src="compare/original-app-settings.png" alt="The original DiPlay in-CarPlay settings menu"><figcaption>Original app (in-CarPlay menu)</figcaption></figure>
+        <div class="cmp" data-before="compare/before-settings.png" data-after="compare/after-settings.png"></div>
+      </div>
+
+      <h2>Splash</h2>
+      <div class="cmp" data-before="compare/before-splash.png" data-after="compare/after-splash.png"></div>
+
+      <h2>Setup and failure</h2>
+      <div class="cmp" data-before="compare/before-setup.png" data-after="compare/after-setup.png"></div>
+      <div class="cmp" data-before="compare/before-failed.png" data-after="compare/after-failed.png" style="margin-top:16px"></div>
+
+      <h2>Motion, side by side</h2>
+      <p>Screenshots can't show motion. Both frames below run the real library; the left one has every library switched off (<code>?libs=off</code>), which is exactly the previous version. Replay both to watch the splash trace and the morph into Home, then click through either frame.</p>
+      <div class="cmp-live">
+        <figure><iframe title="Before: no libraries" data-src="index.html?libs=off&amp;embed=1#walkthrough/splash"></iframe><figcaption>Before · CSS and Web Animations only</figcaption></figure>
+        <figure><iframe title="After: with libraries" data-src="index.html?embed=1#walkthrough/splash"></iframe><figcaption>After · GSAP, Motion, View Transitions, Phosphor</figcaption></figure>
+      </div>
+      <div class="hu-bar"><button class="hu-chip" id="cmp-replay">Replay both</button></div>
+
+      <h2>What each library does here</h2>
+      <table class="lib-table">
+        <tr><th>Library</th><th>Before</th><th>After</th></tr>
+        <tr><td>GSAP · DrawSVG</td><td>A CSS dash-offset trace; the glow and stroke move together.</td><td>The glow trails the pen by 80ms like light, and the fill settles on an expo curve.</td></tr>
+        <tr><td>GSAP · Flip</td><td>A hand-written measure-and-invert morph with Web Animations.</td><td>Flip matches the text across screens by <code>data-flip-id</code>, and one timeline runs the morph, the arrivals and the brand glow.</td></tr>
+        <tr><td>Motion</td><td>Focus and press on a cubic-bezier that overshoots by a fixed amount.</td><td>Real springs: a fast D-pad sweep carries its velocity instead of restarting each move.</td></tr>
+        <tr><td>View Transitions</td><td>The new screen animates in while the old one disappears at once.</td><td>The browser snapshots the old screen and slides it out while the new one slides in.</td></tr>
+        <tr><td>Phosphor</td><td>21 app icons in mixed filled and outline styles.</td><td>One bold family, mapped name for name (<code>connection</code> → <code>wifi-high</code>, and so on).</td></tr>
+        <tr><td>Lottie</td><td>None.</td><td>The trace as one portable file for the web, the app and the boot animation (see <a href="#logo">Logo and splash</a>).</td></tr>
+      </table>
+      <div class="lib-note"><strong>Not done: Rive.</strong> A Rive animation is authored in the Rive editor and saved as a binary <code>.riv</code> file, so it can't be generated here. Lottie covers the same job. Rive is the better choice later if the logo should react to state, such as pulsing while connecting.</div>
+    </section>
+
     <section class="lib-page" data-page="next" data-title="Next steps" data-group="Screens" hidden>
       <div class="lib-eyebrow">Roadmap</div>
       <h1>Taking it to the app</h1>
@@ -562,6 +644,13 @@
   </main>
 </div>
 
+<!-- Motion libraries. Each is optional: components.js and prototype.js fall back without them. -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Flip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/DrawSVGPlugin.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/motion@11.18.2/dist/motion.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie_light.min.js"></script>
+<script src="brand/openplay-splash.lottie.js"></script>
 <script src="icons.js"></script>
 <script src="components.js"></script>
 <script src="prototype.js"></script>

@@ -219,3 +219,25 @@
 }
 .scr-foot .dp-btn--primary { min-width: 180px; }
 .scr-foot .scr-head__spacer { flex: 1; }
+
+/* ---------- View Transitions: screen push / pop ---------- */
+
+/*
+ * prototype.js swaps screens inside document.startViewTransition(). The old screen slides
+ * 36px and fades out while the new one slides in from the other side; html[data-dp-vt]
+ * says which way. The page itself (root) does not animate.
+ */
+::view-transition-old(root),
+::view-transition-new(root) { animation: none; }
+::view-transition-group(*.dp-hu) { animation-duration: var(--dp-dur-slow); }
+::view-transition-old(*.dp-hu) { animation: dp-vt-out var(--dp-dur-base) var(--dp-ease-in-out) both; }
+::view-transition-new(*.dp-hu) { animation: dp-vt-in var(--dp-dur-slow) var(--dp-ease-out) both; }
+html[data-dp-vt="back"]::view-transition-old(*.dp-hu) { animation-name: dp-vt-out-back; }
+html[data-dp-vt="back"]::view-transition-new(*.dp-hu) { animation-name: dp-vt-in-back; }
+@keyframes dp-vt-out { to { opacity: 0; transform: translateX(-36px); } }
+@keyframes dp-vt-in { from { opacity: 0; transform: translateX(36px); } }
+@keyframes dp-vt-out-back { to { opacity: 0; transform: translateX(36px); } }
+@keyframes dp-vt-in-back { from { opacity: 0; transform: translateX(-36px); } }
+
+/* The brand glow behind the wordmark; GSAP fades it in during the splash morph. */
+.scr-home__right::before { opacity: var(--glow-o, 0.45); }

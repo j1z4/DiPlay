@@ -224,15 +224,19 @@
         return `<button class="dp-row" style="--h:76px" data-act="${s.connected ? "toast:CarPlay is running" : "go:connecting"}" data-fid="status" data-dp-focusable>
           <span class="dp-row__icon"><i data-dp-icon="connection"></i></span>
           <span class="dp-row__body"><span class="dp-row__label">CarPlay</span><span class="dp-row__hint">${esc(st.text)}</span></span>
-          <span class="dp-status dp-status--${st.tone}">${st.connected ? "Connected" : "Ready"}</span></button>`;
+          <span class="dp-status dp-status--${st.tone}">${st.short}</span></button>`;
       }
     }
     return "";
   }
 
+  // One source for the connection state; the device card and Overview both read it.
   function statusOf(s) {
-    if (s.connected) return { tone: "connected", text: "CarPlay connected", connected: true };
-    return { tone: "waiting", text: `Ready for ${s.iphone}` };
+    if (s.connecting) return { tone: "connecting", text: "Connecting…", short: "Connecting" };
+    if (s.connected && s.reconnectNeeded) return { tone: "warning", text: "Reconnect to apply changes", short: "Reconnect", connected: true };
+    if (s.connected) return { tone: "connected", text: "CarPlay connected", short: "Connected", connected: true };
+    if (s.failed) return { tone: "failed", text: "Connection interrupted", short: "Failed" };
+    return { tone: "waiting", text: "Ready to connect", short: "Ready" };
   }
 
   function renderPane(cat, s) {
@@ -290,6 +294,10 @@
               <span class="dp-card__label">Connection</span>
               <span class="dp-card__value" data-value-of="connectionMode">${esc(s.connectionMode)}</span>
             </button>
+            <div class="dp-card__item dp-card__item--status" data-tone="${st.tone}" role="status">
+              <span class="dp-card__label">Status</span>
+              <span class="dp-card__value dp-card__status"><span class="dp-card__dot"></span>${esc(st.text)}</span>
+            </div>
           </div>
           <button class="dp-row dp-row--slate" data-act="go:settings" data-fid="home:settings" data-dp-focusable>
             <span class="dp-row__body"><span class="dp-row__label">Settings</span></span>${chevron}
@@ -306,7 +314,6 @@
             <div class="dp-wordmark__tagline">CarPlay, that you own.</div>
           </div>
           <div class="scr-home__cta">
-            <span class="dp-status dp-status--${st.tone}">${esc(st.text)}</span>
             <button class="dp-btn dp-btn--primary dp-btn--lg" data-act="${s.connected ? "toast:Opening CarPlay" : "go:connecting"}" data-fid="home:connect" data-dp-focusable data-autofocus>
               ${s.connected ? "Open CarPlay" : "Connect phone"}
             </button>
@@ -325,6 +332,7 @@
           <button class="dp-btn dp-btn--ghost" data-act="back" data-dp-focusable data-autofocus>Cancel</button>
         </div>`,
       mount(el, ctx, p) {
+        ctx.state.failed = false;
         let i = 0;
         const stage = el.querySelector("#conn-stage");
         const next = () => {
@@ -365,6 +373,11 @@
             <button class="dp-btn dp-btn--ghost dp-btn--lg" data-act="home" data-dp-focusable>Back to OpenPlay</button>
           </div>
         </div>`,
+      // Home's device card shows the failure in red until the next attempt.
+      mount(el, ctx) {
+        ctx.state.failed = true;
+        ctx.state.connected = false;
+      },
     },
 
     settings: {
@@ -499,7 +512,12 @@
 
   /* ---------- Controller ---------- */
 
+  let hosts = 0;
+
   function mount(host, { interactive = true, start = "home" } = {}) {
+    // Each frame is its own View Transition group, so only the screen slides, not the page.
+    host.style.setProperty("view-transition-name", `dp-hu-${++hosts}`);
+    host.style.setProperty("view-transition-class", "dp-hu");
     const state = { ...DEFAULTS, cat: "overview", connected: false, reconnectNeeded: false, setup: {} };
     const stack = [];
     let timers = [];
@@ -534,22 +552,37 @@
 
     // `keep` stays on screen above the new one (for the splash morph); `enter: false`
     // skips the push animation because the caller animates the screen itself.
-    function render(name, params, { back = false, restore = null, keep = null, enter = true } = {}) {
+    //
+    // With the View Transitions API the browser snapshots the old screen and slides it out
+    // while the new one slides in (CSS in screens.css). The DOM swap then happens in the
+    // transition's callback, so render() returns a promise that settles once it has run.
+    function render(name, params, { back = false, restore = null, keep = null, enter = true, vt = true } = {}) {
       timers.forEach(clearTimeout);
       timers = [];
-      host.querySelectorAll(":scope > .scr").forEach((el) => el !== keep && el.remove());
-      const el = document.createElement("div");
-      el.className = `scr scr-${name}${enter ? " dp-screen" : " is-morphing"}${back ? " is-back" : ""}`;
-      el.dataset.dpFocusScope = "";
-      el.innerHTML = SCREENS[name].html(state, params);
-      host.prepend(el);
-      current = el;
-      DP.init(el);
-      SCREENS[name].mount?.(el, ctx, params);
-      if (active) {
-        const target = (restore && el.querySelector(`[data-fid="${CSS.escape(restore)}"]`)) || el.querySelector("[data-autofocus]");
-        DP.focus.reset(el, target);
+      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const useVT = vt && enter && !keep && !reduce && DP.libs.viewTransitions && host.offsetParent !== null && !!current;
+      const swap = () => {
+        host.querySelectorAll(":scope > .scr").forEach((el) => el !== keep && el.remove());
+        const el = document.createElement("div");
+        const anim = !enter ? " is-morphing" : useVT ? "" : " dp-screen";
+        el.className = `scr scr-${name}${anim}${back ? " is-back" : ""}`;
+        el.dataset.dpFocusScope = "";
+        el.innerHTML = SCREENS[name].html(state, params);
+        host.prepend(el);
+        current = el;
+        DP.init(el);
+        SCREENS[name].mount?.(el, ctx, params);
+        if (active) {
+          const target = (restore && el.querySelector(`[data-fid="${CSS.escape(restore)}"]`)) || el.querySelector("[data-autofocus]");
+          DP.focus.reset(el, target);
+        }
+      };
+      if (!useVT) {
+        swap();
+        return Promise.resolve();
       }
+      document.documentElement.dataset.dpVt = back ? "back" : "push";
+      return document.startViewTransition(swap).updateCallbackDone;
     }
 
     /*
@@ -566,6 +599,7 @@
       stack.push({ name: "home", params: {} });
       const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (reduce || !from?.matches(".scr-splash")) return render("home", {});
+      if (DP.libs.gsap) return morphHomeGsap(from);
 
       render("home", {}, { keep: from, enter: false });
       const to = current;
@@ -613,24 +647,72 @@
       setTimeout(() => to.classList.remove("is-morphing"), MORPH.duration + 600);
     }
 
+    /*
+     * The same morph on GSAP. Flip moves the three text parts: it matches them across the
+     * two screens by data-flip-id and handles the scaled head-unit frame itself. The mark
+     * starts as an SVG <path> on the splash, which Flip cannot measure, so it gets the
+     * measured transform from above as a GSAP tween. Returns the timeline (kept on
+     * app.morph for the self-test).
+     */
+    function morphHomeGsap(from) {
+      const gsap = DP.libs.gsap;
+      const Flip = window.Flip;
+      const text = [".dp-wordmark__name", ".dp-wordmark__fork", ".dp-wordmark__tagline"];
+      text.forEach((sel, i) => (from.querySelector(sel).dataset.flipId = `wm-${i}`));
+      const flipState = Flip.getState(from.querySelectorAll("[data-flip-id]"));
+      const markFrom = from.querySelector(".dp-splash__fill").getBoundingClientRect();
+
+      render("home", {}, { keep: from, enter: false, vt: false });
+      const to = current;
+      text.forEach((sel, i) => (to.querySelector(sel).dataset.flipId = `wm-${i}`));
+      const mark = to.querySelector(".dp-wordmark__mark");
+      const markTo = mark.getBoundingClientRect();
+      const k = host.getBoundingClientRect().width / host.offsetWidth || 1;
+      from.remove();
+
+      const tl = gsap.timeline({
+        onComplete: () => {
+          to.classList.remove("is-morphing");
+          gsap.set([mark, ...to.querySelectorAll("[data-flip-id]")], { clearProps: "transform,filter" });
+        },
+      });
+      tl.add(Flip.from(flipState, { targets: to.querySelectorAll("[data-flip-id]"), duration: 0.9, ease: "expo.out", scale: true }), 0);
+      tl.fromTo(
+        mark,
+        {
+          x: (markFrom.left + markFrom.width / 2 - (markTo.left + markTo.width / 2)) / k,
+          y: (markFrom.top + markFrom.height / 2 - (markTo.top + markTo.height / 2)) / k,
+          scale: markFrom.width / markTo.width,
+          filter: "drop-shadow(0px 8px 28px rgba(61, 255, 110, 0))",
+        },
+        { x: 0, y: 0, scale: 1, filter: "drop-shadow(0px 8px 28px rgba(61, 255, 110, 0.28))", duration: 0.9, ease: "expo.out" },
+        0,
+      );
+      const arriving = to.querySelectorAll(".scr-home__left > *, .scr-home__rule, .scr-home__cta > *");
+      tl.from(arriving, { opacity: 0, y: 14, duration: 0.6, stagger: 0.07, ease: "expo.out" }, 0.3);
+      tl.fromTo(to.querySelector(".scr-home__right"), { "--glow-o": 0 }, { "--glow-o": 0.45, duration: 0.9, ease: "power1.out" }, 0.2);
+      api.morph = tl;
+      return tl;
+    }
+
     function go(name, params = {}) {
       if (stack.length) stack[stack.length - 1].focus = DP.focus.current?.dataset?.fid;
       stack.push({ name, params });
-      render(name, params);
+      return render(name, params);
     }
 
     function back() {
-      if (stack.length <= 1) return;
+      if (stack.length <= 1) return Promise.resolve();
       stack.pop();
       const top = stack[stack.length - 1];
-      render(top.name, top.params, { back: true, restore: top.focus });
+      return render(top.name, top.params, { back: true, restore: top.focus });
     }
 
-    function choose(key, value) {
+    async function choose(key, value) {
       const changed = state[key] !== value;
       state[key] = value;
       if (changed && PICKERS[key]?.reconnect && state.connected) state.reconnectNeeded = true;
-      back();
+      await back();
       // The value slides in on the row the driver came back to.
       if (changed) current.querySelectorAll(`[data-value-of="${key}"]`).forEach((v) => {
         v.classList.remove("is-changing");
@@ -710,14 +792,15 @@
 
     go(start);
 
-    return {
+    const api = {
+      morph: null, // the last splash -> Home GSAP timeline
       go: (name) => {
-        if (!SCREENS[name]) return;
+        if (!SCREENS[name]) return Promise.resolve();
         stack.length = 0;
         if (name !== "home" && name !== "splash") stack.push({ name: "home", params: {} });
         if (name === "failed") state.connected = false;
         stack.push({ name, params: {} });
-        render(name, {});
+        return render(name, {});
       },
       activate() {
         active = interactive;
@@ -730,6 +813,7 @@
       },
       state,
     };
+    return api;
   }
 
   window.DPPrototype = { mount, CATEGORIES };
