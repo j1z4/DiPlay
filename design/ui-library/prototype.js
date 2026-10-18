@@ -268,7 +268,8 @@
           </div>
         </div>`,
       mount(el, ctx) {
-        ctx.later(() => ctx.home(), 3400);
+        // Hold the finished splash briefly, then morph into Home.
+        ctx.later(() => ctx.morphHome(), 3000);
       },
     },
 
@@ -514,6 +515,7 @@
         stack.length = 0;
         go("home");
       },
+      morphHome: () => morphHome(),
       setCategory(cat) {
         state.cat = cat;
         const pane = current.querySelector(".scr-pane");
@@ -524,12 +526,14 @@
       },
     };
 
-    function render(name, params, { back = false, restore = null } = {}) {
+    // `keep` stays on screen above the new one (for the splash morph); `enter: false`
+    // skips the push animation because the caller animates the screen itself.
+    function render(name, params, { back = false, restore = null, keep = null, enter = true } = {}) {
       timers.forEach(clearTimeout);
       timers = [];
-      host.querySelectorAll(":scope > .scr").forEach((el) => el.remove());
+      host.querySelectorAll(":scope > .scr").forEach((el) => el !== keep && el.remove());
       const el = document.createElement("div");
-      el.className = `scr scr-${name} dp-screen${back ? " is-back" : ""}`;
+      el.className = `scr scr-${name}${enter ? " dp-screen" : " is-morphing"}${back ? " is-back" : ""}`;
       el.dataset.dpFocusScope = "";
       el.innerHTML = SCREENS[name].html(state, params);
       host.prepend(el);
@@ -540,6 +544,66 @@
         const target = (restore && el.querySelector(`[data-fid="${CSS.escape(restore)}"]`)) || el.querySelector("[data-autofocus]");
         DP.focus.reset(el, target);
       }
+    }
+
+    /*
+     * Splash -> Home as one motion (FLIP). Home is rendered under the splash, then the
+     * mark, name and tagline on Home start at their splash positions and sizes and glide
+     * to their own; the splash is removed in the same frame, so nothing jumps.
+     * The rest of Home fades up behind them.
+     */
+    const MORPH = { duration: 820, easing: "cubic-bezier(0.32, 0.72, 0, 1)" };
+
+    function morphHome() {
+      const from = current;
+      stack.length = 0;
+      stack.push({ name: "home", params: {} });
+      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduce || !from?.matches(".scr-splash")) return render("home", {});
+
+      render("home", {}, { keep: from, enter: false });
+      const to = current;
+      // Rects are in screen pixels; transforms inside the scaled frame are not.
+      const k = host.getBoundingClientRect().width / host.offsetWidth || 1;
+      const pairs = [
+        [".dp-splash__fill", ".dp-wordmark__mark"],
+        [".dp-wordmark__name", ".dp-wordmark__name"],
+        [".dp-wordmark__tagline", ".dp-wordmark__tagline"],
+      ];
+      for (const [a, b] of pairs) {
+        const src = from.querySelector(a);
+        const dst = to.querySelector(b);
+        if (!src || !dst) continue;
+        const r1 = src.getBoundingClientRect();
+        const r2 = dst.getBoundingClientRect();
+        const dx = (r1.left + r1.width / 2 - (r2.left + r2.width / 2)) / k;
+        const dy = (r1.top + r1.height / 2 - (r2.top + r2.height / 2)) / k;
+        const s = r1.width / r2.width;
+        const color = getComputedStyle(src).color;
+        dst.animate(
+          [
+            { transform: `translate(${dx}px, ${dy}px) scale(${s})`, color, filter: "drop-shadow(0 0 0 transparent)" },
+            { transform: "none" },
+          ],
+          { ...MORPH, fill: "backwards" },
+        );
+      }
+      from.remove();
+
+      // Everything that is new on Home arrives after the shared elements start moving.
+      const arriving = [...to.querySelectorAll(".scr-home__left > *, .scr-home__rule, .scr-home__cta > *")];
+      arriving.forEach((el, i) =>
+        el.animate(
+          [{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }],
+          { duration: 560, delay: 300 + i * 70, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "backwards" },
+        ),
+      );
+      try {
+        to.querySelector(".scr-home__right").animate([{ opacity: 0 }, { opacity: 0.45 }], { duration: 900, delay: 200, fill: "backwards", pseudoElement: "::before" });
+      } catch {
+        // pseudoElement animation is not supported everywhere; the glow then just appears.
+      }
+      setTimeout(() => to.classList.remove("is-morphing"), MORPH.duration + 600);
     }
 
     function go(name, params = {}) {

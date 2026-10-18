@@ -5,7 +5,7 @@
 <iframe id="f" src="index.html#walkthrough/settings" style="width:1440px;height:1000px"></iframe>
 <script>
 const out = [];
-const log = (ok, msg) => out.push(`${ok ? "PASS" : "FAIL"} ${msg}`);
+const log = (ok, msg) => { out.push(`${ok ? "PASS" : "FAIL"} ${msg}`); document.getElementById("log").textContent = out.join("\n"); };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 document.getElementById("f").addEventListener("load", async () => {
   try {
@@ -59,6 +59,27 @@ document.getElementById("f").addEventListener("load", async () => {
     await key("ArrowDown", 2);
     await key("Enter");
     log(d.querySelector('#proto [aria-checked="true"]')?.textContent.trim() === "DiLink 5", "setup choice selects DiLink 5");
+    // Splash -> Home morph: no jump at the hand-off, and everything lands where Home puts it.
+    w.location.hash = "walkthrough/splash";
+    await wait(2900);
+    const pick = (root) => ["mark", "name", "tagline"].map((n) => {
+      const el = root.querySelector(n === "mark" ? ".dp-splash__fill, .dp-wordmark__mark" : `.dp-wordmark__${n}`);
+      const r = el.getBoundingClientRect();
+      return { n, x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width };
+    });
+    const splashAt = pick(d.querySelector("#proto .scr-splash"));
+    for (let i = 0; i < 200 && !d.querySelector("#proto .scr-home"); i++) await wait(10);
+    const anims = d.getAnimations();
+    anims.forEach((a) => a.pause());
+    anims.forEach((a) => (a.currentTime = 0));
+    const atStart = pick(d.querySelector("#proto .scr-home"));
+    const off = splashAt.map((b, i) => Math.max(Math.abs(b.x - atStart[i].x), Math.abs(b.y - atStart[i].y), Math.abs(b.w - atStart[i].w)));
+    log(!d.querySelector("#proto .scr-splash") && off.every((o) => o < 1.5), `morph starts exactly on the splash layout (max offset ${off.map((o) => o.toFixed(2)).join(" / ")} px)`);
+    anims.filter((a) => a.effect?.getComputedTiming().endTime !== Infinity).forEach((a) => a.finish());
+    const landed = pick(d.querySelector("#proto .scr-home"));
+    const moved = landed.map((l, i) => Math.hypot(l.x - splashAt[i].x, l.y - splashAt[i].y));
+    log(moved.every((m) => m > 20) && d.querySelector("#proto .dp-wordmark__mark").getAnimations().length === 0, `shared elements land on Home's layout (moved ${moved.map((m) => m.toFixed(0)).join(" / ")} px)`);
+
     w.location.hash = "controls";
     await wait(300);
     const thumb = d.querySelector(".dp-segmented__thumb");

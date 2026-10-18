@@ -167,6 +167,7 @@
         <tr><td>Focus move</td><td>240ms, lift 1.035</td><td>spring</td></tr>
         <tr><td>Color change, value swap</td><td>160–240ms</td><td>out</td></tr>
         <tr><td>Screen push / pop</td><td>420ms, 36px slide plus fade, rows staggered 40ms</td><td>out</td></tr>
+        <tr><td>Splash → Home</td><td>820ms shared-element morph (FLIP). New content fades in 300ms later.</td><td><code>cubic-bezier(0.32, 0.72, 0, 1)</code></td></tr>
         <tr><td>Dialog</td><td>420ms in, 160ms out</td><td>spring in, in-out out</td></tr>
         <tr><td>Edge bump</td><td>220ms, 4px</td><td>spring. Shown when the D-pad hits the end of a list.</td></tr>
       </table>
@@ -213,6 +214,7 @@
         <tr><td>Fill</td><td>1.25 – 2.05 s</td><td>500 – 900 ms</td><td>The gradient fades in and the mark settles from 96% to 100%.</td></tr>
         <tr><td>Release</td><td>1.8 – 2.6 s</td><td>750 – 1000 ms</td><td>The outline and glow dissolve, leaving the filled mark.</td></tr>
         <tr><td>Wordmark</td><td>1.9 – 2.6 s</td><td>(app content)</td><td>"DiPlay" and the tagline rise in.</td></tr>
+        <tr><td>Morph to Home</td><td>3.0 – 3.8 s</td><td>(app content)</td><td>The mark, name and tagline glide and scale into their places on Home as shared elements. The device card, Settings, status and Connect fade up behind them, 70ms apart.</td></tr>
       </table>
 
       <h2>Files</h2>
@@ -524,6 +526,7 @@
       <h2>Flow map</h2>
       <table class="lib-table">
         <tr><th>From</th><th>Action</th><th>To</th></tr>
+        <tr><td>Splash</td><td>(automatic, 3.0 s)</td><td>Morphs into Home: the logo and wordmark move to their Home positions</td></tr>
         <tr><td>Home</td><td>Connect phone</td><td>Connecting → connected, or failed</td></tr>
         <tr><td>Home</td><td>Choose this Device / Connection</td><td>Picker page, then back to Home with the new value</td></tr>
         <tr><td>Home</td><td>Settings</td><td>Settings, starting on Overview</td></tr>
