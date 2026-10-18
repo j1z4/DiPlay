@@ -1,6 +1,6 @@
-# DiPlay UI library
+# OpenPlay UI library
 
-A minimal component library and interactive walkthrough for the DiPlay head-unit UI.
+A minimal component library and interactive walkthrough for the OpenPlay head-unit UI. OpenPlay is a fork of DiPlay.
 It combines three sources: the layout of the Figma frame (the device card on the left, the wordmark on the right), the focus model of Apple TV settings, and the information architecture of the current Android app.
 
 It has no build step and no dependencies apart from the Outfit web font.

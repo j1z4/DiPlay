@@ -62,7 +62,7 @@ document.getElementById("f").addEventListener("load", async () => {
     // Splash -> Home morph: no jump at the hand-off, and everything lands where Home puts it.
     w.location.hash = "walkthrough/splash";
     await wait(2900);
-    const pick = (root) => ["mark", "name", "tagline"].map((n) => {
+    const pick = (root) => ["mark", "name", "fork", "tagline"].map((n) => {
       const el = root.querySelector(n === "mark" ? ".dp-splash__fill, .dp-wordmark__mark" : `.dp-wordmark__${n}`);
       const r = el.getBoundingClientRect();
       return { n, x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width };

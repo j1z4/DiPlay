@@ -78,7 +78,7 @@
 .scr-splash { flex: 1; display: grid; place-items: center; }
 .scr-splash .dp-splash { width: 600px; gap: 36px; }
 .scr-splash .dp-splash__svg { width: 220px; }
-.scr-splash .dp-wordmark__name { font-size: 72px; }
+.scr-splash .dp-wordmark__lockup { font-size: 72px; }
 .scr-splash .dp-wordmark__tagline { font-size: 22px; }
 
 /* ---------- Center column: connecting / failed ---------- */

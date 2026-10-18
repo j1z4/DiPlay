@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DiPlay UI Library</title>
-  <meta name="description" content="Minimal component library and interactive walkthrough for the DiPlay head-unit UI.">
+  <title>OpenPlay UI Library</title>
+  <meta name="description" content="Minimal component library and interactive walkthrough for the OpenPlay head-unit UI.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
 <body class="dp-root">
 <div class="lib" id="lib">
   <aside class="lib-side">
-    <div class="lib-brand">DiPlay <small>UI library</small></div>
+    <div class="lib-brand">OpenPlay <small>UI library</small></div>
     <nav class="lib-nav" id="nav"></nav>
   </aside>
 
@@ -25,9 +25,9 @@
 
     <!-- ===================================================== 00 -->
     <section class="lib-page" data-page="start" data-title="Start here" data-group="Introduction">
-      <div class="lib-eyebrow">DiPlay · CarPlay, that you own.</div>
+      <div class="lib-eyebrow">OpenPlay · CarPlay, that you own.</div>
       <h1>A calm, minimal UI for the head unit.</h1>
-      <p class="lib-lede">This library maps out the DiPlay interface as tokens, components and screens. It takes the layout from the Figma frame, the focus model from Apple TV settings, and the information architecture from the current Android app. Every specimen on these pages is the real component, not a picture.</p>
+      <p class="lib-lede">This library maps out the OpenPlay interface as tokens, components and screens. It takes the layout from the Figma frame, the focus model from Apple TV settings, and the information architecture from the current Android app. Every specimen on these pages is the real component, not a picture.</p>
 
       <div class="lib-stage lib-stage--center is-alone" style="padding:0;background:none;border:0">
         <div class="hu" style="max-width:920px">
@@ -121,12 +121,12 @@
     <section class="lib-page" data-page="type" data-title="Typography" data-group="Foundations" hidden>
       <div class="lib-eyebrow">Foundations</div>
       <h1>Typography</h1>
-      <p class="lib-lede">Outfit, a geometric sans, matches the DiPlay wordmark in the Figma frame. Sizes are large because the screen is an arm's length away. Rows use semibold so labels hold up in sunlight.</p>
+      <p class="lib-lede">Outfit, a geometric sans, matches the OpenPlay wordmark in the Figma frame. Sizes are large because the screen is an arm's length away. Rows use semibold so labels hold up in sunlight.</p>
       <div class="lib-stage lib-stage--col is-alone">
-        <div class="lib-type-row"><span>display · 600 · 96</span><div style="font:var(--dp-text-display);letter-spacing:var(--dp-tracking-display)">DiPlay</div></div>
+        <div class="lib-type-row"><span>display · 600 · 96</span><div style="font:var(--dp-text-display);letter-spacing:var(--dp-tracking-display)">OpenPlay</div></div>
         <div class="lib-type-row"><span>title · 600 · 32</span><div style="font:var(--dp-text-title)">AirPlay and Connection</div></div>
         <div class="lib-type-row"><span>headline · 500 · 22</span><div style="font:var(--dp-text-headline)">Choose this Device</div></div>
-        <div class="lib-type-row"><span>row · 600 · 19</span><div style="font:600 19px/1.2 var(--dp-font)">Connect when DiPlay opens</div></div>
+        <div class="lib-type-row"><span>row · 600 · 19</span><div style="font:600 19px/1.2 var(--dp-font)">Connect when OpenPlay opens</div></div>
         <div class="lib-type-row"><span>callout · 400 · 16</span><div style="font:var(--dp-text-callout);color:var(--dp-text-secondary)">Saved. Some changes apply when CarPlay reconnects.</div></div>
         <div class="lib-type-row"><span>section · 600 · 15</span><div style="font:600 15px/1.2 var(--dp-font);color:var(--dp-text-section)">Automatic connection</div></div>
         <div class="lib-type-row"><span>caption · 500 · 13</span><div style="font:var(--dp-text-caption);color:var(--dp-text-tertiary)">PUBLIC PREVIEW · 0.2.21</div></div>
@@ -183,12 +183,15 @@
     <section class="lib-page" data-page="logo" data-title="Logo &amp; splash" data-group="Foundations" hidden>
       <div class="lib-eyebrow">Foundations</div>
       <h1>Logo and splash</h1>
-      <p class="lib-lede">The DiPlay mark is a rounded five-point asterisk drawn as one closed path, so it traces cleanly. The splash draws the outline, fills it with the signal-green gradient, then lets the outline go. The same timing works as an Android 12 splash screen and as a boot animation.</p>
+      <p class="lib-lede">The OpenPlay mark is a rounded five-point asterisk drawn as one closed path, so it traces cleanly. The splash draws the outline, fills it with the signal-green gradient, then lets the outline go. The same timing works as an Android 12 splash screen and as a boot animation.</p>
 
       <div class="lib-stage lib-stage--col lib-stage--center" style="min-height:440px">
         <div class="dp-splash" id="logo-splash" data-dp-splash style="width:220px;justify-self:center;margin:0 auto">
           <div class="dp-splash__after dp-wordmark" style="margin-top:28px">
-            <div class="dp-wordmark__name" style="font-size:56px">DiPlay</div>
+            <div class="dp-wordmark__lockup" style="font-size:56px">
+              <div class="dp-wordmark__name">OpenPlay</div>
+              <div class="dp-wordmark__fork">(a fork of DiPlay)</div>
+            </div>
             <div class="dp-wordmark__tagline" style="font-size:18px;color:var(--dp-text-secondary)">CarPlay, that you own.</div>
           </div>
         </div>
@@ -213,7 +216,7 @@
         <tr><td>Trace</td><td>0 – 1.6 s</td><td>0 – 700 ms</td><td>The outline draws counter-clockwise from the top-left corner, white fading to green, with a blurred green glow.</td></tr>
         <tr><td>Fill</td><td>1.25 – 2.05 s</td><td>500 – 900 ms</td><td>The gradient fades in and the mark settles from 96% to 100%.</td></tr>
         <tr><td>Release</td><td>1.8 – 2.6 s</td><td>750 – 1000 ms</td><td>The outline and glow dissolve, leaving the filled mark.</td></tr>
-        <tr><td>Wordmark</td><td>1.9 – 2.6 s</td><td>(app content)</td><td>"DiPlay" and the tagline rise in.</td></tr>
+        <tr><td>Wordmark</td><td>1.9 – 2.6 s</td><td>(app content)</td><td>"OpenPlay" and the tagline rise in.</td></tr>
         <tr><td>Morph to Home</td><td>3.0 – 3.8 s</td><td>(app content)</td><td>The mark, name and tagline glide and scale into their places on Home as shared elements. The device card, Settings, status and Connect fade up behind them, 70ms apart.</td></tr>
       </table>
 
@@ -298,7 +301,7 @@
           <span class="dp-row__icon"><i data-dp-icon="connection"></i></span>
           <span class="dp-row__body">
             <span class="dp-row__label">Connection</span>
-            <span class="dp-row__hint">Wireless · connects when DiPlay opens</span>
+            <span class="dp-row__hint">Wireless · connects when OpenPlay opens</span>
           </span>
           <i data-dp-icon="chevron" class="dp-row__chevron"></i>
         </button>
@@ -331,7 +334,7 @@
         <div class="dp-group">
           <div class="dp-group__header">Automatic connection</div>
           <button class="dp-row" role="switch" aria-checked="true">
-            <span class="dp-row__body"><span class="dp-row__label">Connect when DiPlay opens</span></span>
+            <span class="dp-row__body"><span class="dp-row__label">Connect when OpenPlay opens</span></span>
             <span class="dp-switch"></span>
           </button>
           <button class="dp-row">
@@ -373,7 +376,10 @@
       <h2>Wordmark</h2>
       <div class="lib-stage lib-stage--center" data-code>
         <div class="dp-wordmark">
-          <div class="dp-wordmark__name">DiPlay</div>
+          <div class="dp-wordmark__lockup">
+            <div class="dp-wordmark__name">OpenPlay</div>
+            <div class="dp-wordmark__fork">(a fork of DiPlay)</div>
+          </div>
           <div class="dp-wordmark__tagline">CarPlay, that you own.</div>
         </div>
       </div>
@@ -482,7 +488,7 @@
         <button class="dp-btn" onclick="DP.toast('Saved')">Show toast</button>
         <button class="dp-btn" onclick="DP.dialog({
           title: 'Reset CarPlay Wi-Fi?',
-          body: 'DiPlay forgets this network and reconnects. CarPlay stops for a few seconds.',
+          body: 'OpenPlay forgets this network and reconnects. CarPlay stops for a few seconds.',
           actions: [{ label: 'Cancel', value: false }, { label: 'Reset and connect', kind: 'danger', value: true }]
         }).then(ok => ok &amp;&amp; DP.toast('Reconnecting…'))">Show dialog</button>
       </div>

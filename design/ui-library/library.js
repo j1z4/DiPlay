@@ -91,7 +91,7 @@
     pages.forEach((p) => (p.hidden = p !== page));
     nav.querySelectorAll("a").forEach((a) => a.toggleAttribute("aria-current", a.getAttribute("href") === `#${page.dataset.page}`));
     nav.querySelectorAll("a[aria-current]").forEach((a) => a.setAttribute("aria-current", "page"));
-    document.title = `${page.dataset.title.replace("&amp;", "&")} · DiPlay UI Library`;
+    document.title = `${page.dataset.title.replace("&amp;", "&")} · OpenPlay UI Library`;
     document.getElementById("lib").classList.remove("is-menu-open");
     window.scrollTo({ top: 0, behavior: "instant" });
     DP.init(page); // segmented thumbs need the page visible to measure

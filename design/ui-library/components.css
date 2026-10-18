@@ -43,12 +43,29 @@
   gap: var(--dp-space-3);
   text-align: center;
 }
-/* Wordmark as set in the Figma frame: bold, near-default tracking, white tagline. */
-.dp-wordmark__name {
+/*
+ * OpenPlay lockup: the bold name, "(a fork of DiPlay)" tucked under its right end
+ * (ending where the "y" starts), then the tagline. The lockup carries the display
+ * size; the fork line is sized and placed in ems of it, so the lockup scales as one.
+ */
+.dp-wordmark__lockup {
+  display: grid;
   font: var(--dp-text-display);
-  font-weight: 700;
-  letter-spacing: -0.015em;
   color: var(--dp-text);
+}
+.dp-wordmark__name {
+  font-size: 1em;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.dp-wordmark__fork {
+  justify-self: end;
+  margin: -0.2em 3.3em 0 0;
+  font-size: 0.19em;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
 }
 .dp-wordmark__tagline {
   font: 700 clamp(18px, 2vw, 26px) / 1.2 var(--dp-font);

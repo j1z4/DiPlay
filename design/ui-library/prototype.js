@@ -1,5 +1,5 @@
 /*
- * The walkthrough: every DiPlay screen built from library components only.
+ * The walkthrough: every OpenPlay screen built from library components only.
  * Copy comes from common/src/main/res/values/strings.xml where the app has it.
  *
  *   const app = DPPrototype.mount(hostElement, { interactive: true });
@@ -27,13 +27,13 @@
   ];
 
   const PICKERS = {
-    iphone: { title: "Choose iPhone", icon: "connection", note: "DiPlay connects to this iPhone when it is nearby.", options: ["Device Name", "Work iPhone"] },
+    iphone: { title: "Choose iPhone", icon: "connection", note: "OpenPlay connects to this iPhone when it is nearby.", options: ["Device Name", "Work iPhone"] },
     connectionMode: { title: "Default connection mode", icon: "connection", note: "Wireless joins the car hotspot. USB uses the cable and charges the iPhone.", options: ["Wi-Fi", "USB"], reconnect: true },
     charging: { title: "iPhone charging", icon: "connection", note: "Lower current keeps older head units stable.", options: ["Normal 2.4 A", "Reduced 1.5 A", "Low 0.5 A"], reconnect: true },
     nightMode: { title: "CarPlay night mode", icon: "night", note: "System follows the car's headlights signal.", options: ["System", "Ambient light", "Day", "Night", "Schedule"] },
     carplaySize: { title: "CarPlay size", icon: "display", note: "Applies at the next connection.", options: ["Full screen", "Widescreen", "Standard"], reconnect: true },
     musicBuffer: { title: "Music buffer · wireless", icon: "audio", note: "A larger buffer rides out Wi-Fi drops but starts later.", options: ["Low latency", "Balanced", "Smooth"] },
-    fingers: { title: "Quick menu swipe-down fingers", icon: "controls", note: "How many fingers open the DiPlay menu inside CarPlay.", options: ["2 fingers", "3 fingers", "Off"] },
+    fingers: { title: "Quick menu swipe-down fingers", icon: "controls", note: "How many fingers open the OpenPlay menu inside CarPlay.", options: ["2 fingers", "3 fingers", "Off"] },
     siriKey: { title: "Siri key", icon: "car", note: "The steering-wheel key that starts Siri.", options: ["Voice button", "Phone button", "None"] },
     language: { title: "App language", icon: "language", note: "CarPlay itself follows the iPhone's language.", options: ["English", "العربية", "Italiano", "Русский", "简体中文", "繁體中文", "日本語"] },
   };
@@ -85,7 +85,7 @@
       {
         header: "Quick settings",
         rows: [
-          row.toggle("connectOnOpen", "Connect when DiPlay opens"),
+          row.toggle("connectOnOpen", "Connect when OpenPlay opens"),
           row.pick("nightMode", "CarPlay night mode"),
           row.toggle("fullScreen", "Full screen"),
           row.toggle("reportLocation", "Report location to iPhone"),
@@ -97,7 +97,7 @@
       {
         header: "Automatic connection",
         rows: [
-          row.toggle("connectOnOpen", "Connect when DiPlay opens"),
+          row.toggle("connectOnOpen", "Connect when OpenPlay opens"),
           row.toggle("reconnectOnReturn", "Connect when the selected iPhone reconnects"),
           row.pick("connectionMode", "Default connection mode"),
           row.toggle("openAfterStart", "Open after the car starts"),
@@ -157,7 +157,7 @@
       },
     ],
     about: [
-      { header: "DiPlay", rows: [row.info("Version", "0.2.21 · public preview"), row.link("Check for updates", "toast:DiPlay is up to date"), row.toggle("backgroundUpdates", "Check in the background")] },
+      { header: "OpenPlay", rows: [row.info("Version", "0.2.21 · public preview"), row.link("Check for updates", "toast:OpenPlay is up to date"), row.toggle("backgroundUpdates", "Check in the background")] },
       { header: "Settings", rows: [row.link("Back up settings", "toast:Scan the QR code to save a backup")] },
     ],
   };
@@ -165,7 +165,7 @@
   const STAGES = ["Getting CarPlay ready…", "Looking for your paired iPhone…", "Joining the car hotspot…", "Opening CarPlay…"];
 
   const SETUP = [
-    { title: "Your car", body: "DiPlay couldn’t read the DiLink version. Choose it below, or keep Not sure.", key: "car", options: ["DiLink 3", "DiLink 4", "DiLink 5", "Not sure"] },
+    { title: "Your car", body: "OpenPlay couldn’t read the DiLink version. Choose it below, or keep Not sure.", key: "car", options: ["DiLink 3", "DiLink 4", "DiLink 5", "Not sure"] },
     {
       title: "Connection",
       body: "Choose how the iPhone reaches the car. Most cars work best with the car’s own hotspot on 5 GHz.",
@@ -178,13 +178,13 @@
       title: "Features",
       body: "Turn on what you want now. Everything stays in Settings and can be changed later.",
       toggles: [
-        ["connectOnOpen", "Connect when DiPlay opens", "Tested"],
+        ["connectOnOpen", "Connect when OpenPlay opens", "Tested"],
         ["openAfterStart", "Open after the car starts", "Tested"],
         ["reportLocation", "Report location to iPhone", "Tested"],
         ["splitScreen", "Split screen (experimental)", "Experimental"],
       ],
     },
-    { title: "You're ready", body: "DiPlay is set up. Connect your iPhone now, or change anything later in Settings.", done: true },
+    { title: "You're ready", body: "OpenPlay is set up. Connect your iPhone now, or change anything later in Settings.", done: true },
   ];
 
   /* ---------- Rendering helpers ---------- */
@@ -262,7 +262,10 @@
         <div class="scr-splash">
           <div class="dp-splash" data-dp-splash>
             <div class="dp-splash__after dp-wordmark">
-              <div class="dp-wordmark__name">DiPlay</div>
+              <div class="dp-wordmark__lockup">
+                <div class="dp-wordmark__name">OpenPlay</div>
+                <div class="dp-wordmark__fork">(a fork of DiPlay)</div>
+              </div>
               <div class="dp-wordmark__tagline">CarPlay, that you own.</div>
             </div>
           </div>
@@ -296,7 +299,10 @@
         <div class="scr-home__right">
           <div class="dp-wordmark">
             <i data-dp-mark class="dp-wordmark__mark"></i>
-            <div class="dp-wordmark__name">DiPlay</div>
+            <div class="dp-wordmark__lockup">
+              <div class="dp-wordmark__name">OpenPlay</div>
+              <div class="dp-wordmark__fork">(a fork of DiPlay)</div>
+            </div>
             <div class="dp-wordmark__tagline">CarPlay, that you own.</div>
           </div>
           <div class="scr-home__cta">
@@ -356,7 +362,7 @@
           <div class="scr-actions">
             <button class="dp-btn dp-btn--primary dp-btn--lg" data-act="replace:connecting" data-dp-focusable data-autofocus>Retry connection</button>
             <button class="dp-btn dp-btn--lg" data-act="dialog:reset" data-dp-focusable>Reset CarPlay Wi-Fi</button>
-            <button class="dp-btn dp-btn--ghost dp-btn--lg" data-act="home" data-dp-focusable>Back to DiPlay</button>
+            <button class="dp-btn dp-btn--ghost dp-btn--lg" data-act="home" data-dp-focusable>Back to OpenPlay</button>
           </div>
         </div>`,
     },
@@ -568,6 +574,7 @@
       const pairs = [
         [".dp-splash__fill", ".dp-wordmark__mark"],
         [".dp-wordmark__name", ".dp-wordmark__name"],
+        [".dp-wordmark__fork", ".dp-wordmark__fork"],
         [".dp-wordmark__tagline", ".dp-wordmark__tagline"],
       ];
       for (const [a, b] of pairs) {
@@ -669,7 +676,7 @@
           const ok = await DP.dialog({
             host,
             title: "Reset CarPlay Wi-Fi?",
-            body: "DiPlay forgets the CarPlay Wi-Fi group and connects again. CarPlay stops for a few seconds.",
+            body: "OpenPlay forgets the CarPlay Wi-Fi group and connects again. CarPlay stops for a few seconds.",
             actions: [
               { label: "Cancel", value: false },
               { label: "Reset and connect", kind: "danger", value: true },
