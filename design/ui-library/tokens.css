@@ -1,0 +1,134 @@
+/*
+ * DiPlay UI tokens.
+ *
+ * One source for color, type, size, shape and motion. Components in components.css
+ * read only these variables, so a theme is a block of overrides and nothing else.
+ *
+ * Shape rule carried over from the app (DiPlayButton.kt, AGENTS.md "Settings layout"):
+ * corner radius follows control height, radius = min(24px, height * 20 / 56).
+ */
+
+:root {
+  /* Canvas: true black, as in the Figma frame. OLED head units show it as off. */
+  --dp-bg: #000000;
+  --dp-bg-raised: #0b0d12;
+
+  /* Surfaces: the slate card from the Figma frame, plus quieter steps for rows. */
+  --dp-surface: #1a1d24;
+  --dp-surface-2: #242934;
+  --dp-card: #566177;
+  --dp-card-divider: rgba(214, 226, 255, 0.38);
+  --dp-outline: rgba(255, 255, 255, 0.08);
+
+  /* Text */
+  --dp-text: #f4f6fb;
+  --dp-text-label: #d6e2ff;     /* lavender label in the Figma card */
+  --dp-text-secondary: #9aa3b5;
+  --dp-text-tertiary: #6b7385;
+  --dp-text-section: #7c8496;   /* "AirPlay", "Reset" group headers */
+
+  /* Focus: the Apple TV model. Focused rows invert to white with dark text. */
+  --dp-focus-fill: #f4f6fb;
+  --dp-focus-text: #0b0d12;
+  --dp-focus-value: #4a5263;
+  --dp-focus-ring: #a6c8ff;     /* DiPlayPalette.DARK.focusRing */
+  --dp-focus-scale: 1.035;
+  --dp-focus-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
+
+  /* Accent and states (DiPlayPalette.DARK) */
+  --dp-accent: #a6c8ff;
+  --dp-on-accent: #0c111b;
+  --dp-accent-track: #32588c;
+  --dp-track-off: #3a4150;
+  --dp-success: #7fcd9a;
+  --dp-warning: #ffc480;
+  --dp-danger: #e5484d;
+  --dp-danger-tonal: rgba(229, 72, 77, 0.16);
+
+  /* Type: Outfit matches the geometric wordmark in the Figma frame. */
+  --dp-font: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --dp-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --dp-text-display: 600 clamp(56px, 7vw, 96px) / 1 var(--dp-font);
+  --dp-text-title: 600 32px / 1.15 var(--dp-font);
+  --dp-text-headline: 500 22px / 1.25 var(--dp-font);
+  --dp-text-body: 500 19px / 1.3 var(--dp-font);
+  --dp-text-callout: 400 16px / 1.4 var(--dp-font);
+  --dp-text-caption: 500 13px / 1.3 var(--dp-font);
+
+  --dp-tracking-display: -0.03em;
+  --dp-tracking-tight: -0.01em;
+
+  /* Size: control heights. Rows match so controls in one row line up. */
+  --dp-h-sm: 40px;
+  --dp-h-md: 56px;
+  --dp-h-lg: 64px;
+
+  /* Spacing (4px grid). Named gaps, never literals, as AGENTS.md asks. */
+  --dp-space-1: 4px;
+  --dp-space-2: 8px;
+  --dp-space-3: 12px;
+  --dp-space-4: 16px;
+  --dp-space-5: 20px;
+  --dp-space-6: 24px;
+  --dp-space-8: 32px;
+  --dp-space-10: 40px;
+  --dp-space-12: 48px;
+  --dp-row-gap: 10px;           /* between rows in a group */
+  --dp-block-gap: 28px;         /* between groups (SETTINGS_BLOCK_GAP) */
+
+  /* Shape */
+  --dp-radius-card: 16px;
+  --dp-radius-pill: 999px;
+
+  /* Motion. Short and calm: a driver glances, they do not watch. */
+  --dp-dur-instant: 90ms;
+  --dp-dur-fast: 160ms;
+  --dp-dur-base: 240ms;
+  --dp-dur-slow: 420ms;
+  --dp-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dp-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dp-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  color-scheme: dark;
+}
+
+/* Day mode: the app follows the car's day/night signal (CarPlayNightMode.kt). */
+[data-dp-theme="day"] {
+  --dp-bg: #e9eef6;
+  --dp-bg-raised: #f3f6fb;
+  --dp-surface: #ffffff;
+  --dp-surface-2: #dce5f1;
+  --dp-card: #c9d4e6;
+  --dp-card-divider: rgba(36, 90, 156, 0.28);
+  --dp-outline: rgba(28, 28, 30, 0.08);
+  --dp-text: #1c1c1e;
+  --dp-text-label: #2b3a55;
+  --dp-text-secondary: #5a6474;
+  --dp-text-tertiary: #8a93a3;
+  --dp-text-section: #6a7385;
+  --dp-focus-fill: #1c1c1e;
+  --dp-focus-text: #ffffff;
+  --dp-focus-value: #b9c1cf;
+  --dp-focus-ring: #245a9c;
+  --dp-focus-shadow: 0 18px 40px -16px rgba(28, 40, 60, 0.45);
+  --dp-accent: #245a9c;
+  --dp-on-accent: #ffffff;
+  --dp-accent-track: #245a9c;
+  --dp-track-off: #a7b5c7;
+  --dp-success: #286b3f;
+  --dp-warning: #7a4500;
+  --dp-danger: #9b3030;
+  --dp-danger-tonal: rgba(155, 48, 48, 0.12);
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dp-dur-instant: 1ms;
+    --dp-dur-fast: 1ms;
+    --dp-dur-base: 1ms;
+    --dp-dur-slow: 1ms;
+    --dp-focus-scale: 1;
+  }
+}

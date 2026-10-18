@@ -1,0 +1,74 @@
+<!doctype html>
+<meta charset="utf-8">
+<body>
+<pre id="log"></pre>
+<iframe id="f" src="index.html#walkthrough/settings" style="width:1440px;height:1000px"></iframe>
+<script>
+const out = [];
+const log = (ok, msg) => out.push(`${ok ? "PASS" : "FAIL"} ${msg}`);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+document.getElementById("f").addEventListener("load", async () => {
+  try {
+    await wait(800);
+    const w = document.getElementById("f").contentWindow;
+    const d = w.document;
+    const key = async (k, n = 1) => { for (let i = 0; i < n; i++) { d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true })); await wait(60); } await wait(120); };
+    const fid = () => w.DP.focus.current?.dataset.fid || w.DP.focus.current?.textContent.trim();
+    const screen = () => d.querySelector("#proto > .scr").className;
+
+    log(fid() === "cat:overview", `starts on rail Overview (${fid()})`);
+    await key("ArrowDown");
+    log(fid() === "cat:connection" && d.querySelector(".scr-pane").textContent.includes("Automatic connection"), `focus down swaps pane to Connection (${fid()})`);
+    await key("ArrowRight");
+    log(fid() === "toggle:connectOnOpen", `right enters pane at first row (${fid()})`);
+    const before = w.DP.focus.current.getAttribute("aria-checked");
+    await key("Enter");
+    log(w.DP.focus.current.getAttribute("aria-checked") !== before, `enter toggles switch (${before} -> ${w.DP.focus.current.getAttribute("aria-checked")})`);
+    await key("ArrowDown", 2);
+    log(fid() === "pick:connectionMode", `down twice reaches picker row (${fid()})`);
+    await key("Enter");
+    log(screen().includes("scr-picker"), `enter pushes picker (${screen()})`);
+    await key("ArrowDown");
+    await key("Enter");
+    await wait(200);
+    log(screen().includes("scr-settings") && fid() === "pick:connectionMode", `choose pops back with focus restored (${fid()})`);
+    log(d.querySelector('.scr-pane [data-value-of="connectionMode"]').textContent === "USB", "value updated to USB");
+    await key("ArrowLeft");
+    log(fid() === "cat:connection", `left returns to current category (${fid()})`);
+    await key("Escape");
+    log(screen().includes("scr-home"), `escape goes back to home (${screen()})`);
+    log(d.querySelector('#proto [data-value-of="connectionMode"]').textContent === "USB", "home card shows USB");
+
+    w.location.hash = "walkthrough/connecting";
+    await wait(6500);
+    log(screen().includes("scr-home") && d.querySelector("#proto .dp-status").textContent.includes("connected"), `connect flow ends on home, connected (${d.querySelector("#proto .dp-status").textContent})`);
+    log(!!d.querySelector("#proto .dp-toast"), "toast shown after connecting");
+
+    w.location.hash = "walkthrough/failed";
+    await wait(300);
+    await key("ArrowRight");
+    await key("Enter");
+    await wait(500);
+    log(!!d.querySelector("#proto .dp-dialog") && w.DP.focus.current?.textContent.trim() === "Reset and connect", `reset opens dialog, confirm focused (${w.DP.focus.current?.textContent.trim()})`);
+    await key("Escape");
+    await wait(400);
+    log(!d.querySelector("#proto .dp-dialog") && fid()?.includes("Reset CarPlay Wi-Fi"), `escape closes dialog and restores focus (${fid()})`);
+
+    w.location.hash = "walkthrough/setup";
+    await wait(300);
+    await key("ArrowDown", 2);
+    await key("Enter");
+    log(d.querySelector('#proto [aria-checked="true"]')?.textContent.trim() === "DiLink 5", "setup choice selects DiLink 5");
+    w.location.hash = "controls";
+    await wait(300);
+    const thumb = d.querySelector(".dp-segmented__thumb");
+    const cur = thumb.parentElement.querySelector('[aria-checked="true"]');
+    log(Math.abs(thumb.offsetWidth - cur.offsetWidth) < 2, `segmented thumb matches option width (${thumb.offsetWidth}/${cur.offsetWidth})`);
+    log(w.DP.focus.scopes.length === 0, "focus engine released off the walkthrough page");
+  } catch (e) {
+    out.push("ERROR " + e.stack);
+  }
+  document.getElementById("log").textContent = out.join("\n") + "\nDONE";
+});
+window.addEventListener("error", (e) => out.push("ERROR " + e.message));
+</script>
