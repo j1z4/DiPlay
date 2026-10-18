@@ -86,12 +86,26 @@ document.getElementById("f").addEventListener("load", async () => {
     anims.forEach((a) => (a.currentTime = 0));
     const atStart = pick(d.querySelector("#proto .scr-home"));
     const off = splashAt.map((b, i) => Math.max(Math.abs(b.x - atStart[i].x), Math.abs(b.y - atStart[i].y), Math.abs(b.w - atStart[i].w)));
-    log(!d.querySelector("#proto .scr-splash") && off.every((o) => o < 1.5), `morph starts exactly on the splash layout (max offset ${off.map((o) => o.toFixed(2)).join(" / ")} px)`);
+    log([...d.querySelectorAll("#proto .scr-splash")].every((s) => s.classList.contains("is-retiring")) && off.every((o) => o < 1.5), `morph starts exactly on the splash layout (max offset ${off.map((o) => o.toFixed(2)).join(" / ")} px)`);
     if (tl) tl.progress(1);
     anims.filter((a) => a.effect?.getComputedTiming().endTime !== Infinity).forEach((a) => a.finish());
     const landed = pick(d.querySelector("#proto .scr-home"));
     const moved = landed.map((l, i) => Math.hypot(l.x - splashAt[i].x, l.y - splashAt[i].y));
     log(moved.every((m) => m > 20) && d.querySelector("#proto .dp-wordmark__mark").getAnimations().length === 0, `shared elements land on Home's layout (moved ${moved.map((m) => m.toFixed(0)).join(" / ")} px)`);
+
+    // Connect from Home: the splash becomes the loading screen, with the status bottom-left.
+    await wait(500);
+    d.querySelector('#proto [data-fid="home:connect"]').click();
+    await wait(500);
+    const loading = d.querySelector("#proto .scr-connecting");
+    const line = loading?.querySelector(".dp-statusline");
+    const frame = d.getElementById("proto").getBoundingClientRect();
+    const corner = line?.getBoundingClientRect();
+    const bottomLeft = !!corner && corner.left - frame.left < frame.width * 0.1 && frame.bottom - corner.bottom < frame.height * 0.12;
+    log(!!loading?.querySelector(".dp-splash.is-loading") && line?.dataset.tone === "connecting" && bottomLeft, `Connect turns the splash into the loading screen, status bottom-left (${line?.dataset.tone}: ${line?.textContent.trim()})`);
+    await key("Escape");
+    await wait(1200);
+    log(screen().includes("scr-home") && !d.querySelector("#proto .scr-connecting"), `Esc on the loading screen glides back to Home (${screen()})`);
 
     w.location.hash = "controls";
     await wait(300);

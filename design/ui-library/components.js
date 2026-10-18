@@ -364,7 +364,9 @@
         <filter id="${id}-b" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3"/></filter></defs>
       <path class="dp-splash__fill" fill="url(#${id}-f)" fill-rule="evenodd" d="${MARK_PATH}"/>
       <path class="dp-splash__glow" pathLength="1" stroke="#3DFF6E" stroke-width="6" stroke-linejoin="round" filter="url(#${id}-b)" d="${MARK_PATH}"/>
-      <path class="dp-splash__trace" pathLength="1" stroke="url(#${id}-s)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" d="${MARK_PATH}"/></svg>`;
+      <path class="dp-splash__trace" pathLength="1" stroke="url(#${id}-s)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" d="${MARK_PATH}"/>
+      <path class="dp-splash__orbit" pathLength="1" stroke="#3DFF6E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" filter="url(#${id}-b)" d="${MARK_PATH}"/>
+      <path class="dp-splash__orbit" pathLength="1" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="${MARK_PATH}"/></svg>`;
   }
 
   /*
@@ -372,8 +374,16 @@
    * stroke by 80 ms like light following a pen, and the fill settles on an expo curve.
    * Returns the GSAP timeline (or null when the CSS fallback runs).
    */
-  function replaySplash(el) {
+  function replaySplash(el, { filled = false } = {}) {
     const gsap = libs.gsap;
+    if (filled) {
+      // Entering from Home: the mark is already drawn, so skip the trace.
+      el._dpTimeline?.kill();
+      el.classList.remove("is-playing", "is-gsap");
+      el.classList.add("is-filled");
+      return null;
+    }
+    el.classList.remove("is-filled");
     if (!gsap || reduceMotion.matches) {
       el.classList.remove("is-playing", "is-gsap");
       void el.offsetWidth;
@@ -434,7 +444,7 @@
     root.querySelectorAll("[data-dp-splash]:not([data-ready])").forEach((el) => {
       el.dataset.ready = "";
       el.insertAdjacentHTML("afterbegin", splash());
-      replaySplash(el);
+      replaySplash(el, { filled: el.dataset.dpSplash === "filled" });
     });
   }
 

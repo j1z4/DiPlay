@@ -257,26 +257,94 @@
     return `<div class="scr-pane__inner dp-stagger">${reconnect}${groups}</div>`;
   }
 
+  /* ---------- Brand stage: splash and loading screen ---------- */
+
+  function brandStage(s, { filled, tone, text, loading }) {
+    const hint = s.connectionMode === "USB" ? "Keep the cable plugged in and the iPhone unlocked." : `Keep ${esc(s.iphone)} unlocked and nearby.`;
+    return `
+      <div class="scr-brand">
+        <div class="dp-splash${loading ? " is-loading" : ""}" data-dp-splash="${filled ? "filled" : ""}">
+          <div class="dp-splash__after dp-wordmark">
+            <div class="dp-wordmark__lockup">
+              <div class="dp-wordmark__name">OpenPlay</div>
+              <div class="dp-wordmark__fork">(a fork of DiPlay)</div>
+            </div>
+            <div class="dp-wordmark__tagline">CarPlay, that you own.</div>
+          </div>
+        </div>
+      </div>
+      <div class="scr-corner">
+        <span class="dp-statusline" data-tone="${tone}" role="status"><span class="dp-dot"></span><span class="dp-statusline__text">${esc(text)}</span></span>
+        <span class="scr-corner__hint" ${loading ? "" : "hidden"}>${hint}</span>
+      </div>
+      <div class="scr-corner scr-corner--right" ${loading ? "" : "hidden"}>
+        <button class="dp-btn dp-btn--ghost" data-act="cancel-connect" data-fid="cancel" data-dp-focusable ${loading ? "data-autofocus" : ""}>Cancel</button>
+      </div>`;
+  }
+
+  function setStatus(el, tone, text) {
+    const line = el.querySelector(".dp-statusline");
+    const label = line.querySelector(".dp-statusline__text");
+    line.dataset.tone = tone;
+    if (label.textContent === text) return;
+    label.textContent = text;
+    label.classList.remove("is-changing");
+    void label.offsetWidth;
+    label.classList.add("is-changing");
+  }
+
+  // Runs the connection on a brand stage: stages tick through the corner status while the
+  // light runs round the mark; then the mark pops and Home takes over, or it shakes and
+  // the failure screen follows.
+  function startLoading(el, ctx, p) {
+    ctx.state.failed = false;
+    const splash = el.querySelector(".dp-splash");
+    splash.classList.add("is-loading");
+    el.querySelectorAll(".scr-corner[hidden], .scr-corner__hint[hidden]").forEach((c) => c.removeAttribute("hidden"));
+    const cancel = el.querySelector('[data-act="cancel-connect"]');
+    if (DP.focus.scope === el) DP.focus.set(cancel);
+    let i = 0;
+    setStatus(el, "connecting", STAGES[0]);
+    const next = () => {
+      i++;
+      if (i < STAGES.length) {
+        setStatus(el, "connecting", STAGES[i]);
+        return ctx.later(next, 900);
+      }
+      splash.classList.remove("is-loading");
+      el.querySelector(".scr-corner--right").setAttribute("hidden", "");
+      el.querySelector(".scr-corner__hint").setAttribute("hidden", "");
+      if (p.fail) {
+        splash.classList.add("is-failed");
+        setStatus(el, "failed", "Connection interrupted");
+        return ctx.later(() => ctx.replace("failed"), 1200);
+      }
+      splash.classList.add("is-done");
+      setStatus(el, "connected", "CarPlay connected");
+      ctx.state.connected = true;
+      ctx.later(() => {
+        ctx.morphHome();
+        DP.toast("CarPlay connected", { host: ctx.host });
+      }, 1200);
+    };
+    ctx.later(next, 900);
+  }
+
   /* ---------- Screens ---------- */
 
   const SCREENS = {
     // The splash trace, then the wordmark rises and Home takes over.
+    // Boot: the trace plays with "Starting OpenPlay…" in the corner. With "Connect when
+    // OpenPlay opens" on, the same screen turns into the loading screen; otherwise it
+    // settles on "Ready to connect" and morphs into Home.
     splash: {
-      html: () => `
-        <div class="scr-splash">
-          <div class="dp-splash" data-dp-splash>
-            <div class="dp-splash__after dp-wordmark">
-              <div class="dp-wordmark__lockup">
-                <div class="dp-wordmark__name">OpenPlay</div>
-                <div class="dp-wordmark__fork">(a fork of DiPlay)</div>
-              </div>
-              <div class="dp-wordmark__tagline">CarPlay, that you own.</div>
-            </div>
-          </div>
-        </div>`,
+      html: (s) => brandStage(s, { filled: false, tone: "waiting", text: "Starting OpenPlay…", loading: false }),
       mount(el, ctx) {
-        // Hold the finished splash briefly, then morph into Home.
-        ctx.later(() => ctx.morphHome(), 3000);
+        ctx.later(() => {
+          if (ctx.state.connectOnOpen && !ctx.state.connected) return startLoading(el, ctx, {});
+          setStatus(el, "waiting", "Ready to connect");
+          ctx.later(() => ctx.morphHome(), 600);
+        }, 2600);
       },
     },
 
@@ -322,42 +390,12 @@
       },
     },
 
+    // Connecting happens on the splash: same layout, the mark already drawn, a light
+    // running round its outline and the stage in the bottom-left status line.
     connecting: {
-      html: (s, p) => `
-        <div class="scr-center dp-stagger">
-          <div class="dp-connecting" id="conn"><span class="dp-connecting__ring"></span><span class="dp-connecting__ring"></span><span class="dp-connecting__ring"></span>
-            <span class="dp-connecting__core"><i data-dp-icon="connection"></i></span></div>
-          <h1 class="scr-title" id="conn-stage">${STAGES[0]}</h1>
-          <p class="scr-sub">${s.connectionMode === "USB" ? "Keep the cable plugged in and the iPhone unlocked." : `Keep ${esc(s.iphone)} unlocked and nearby, with Wi-Fi and Bluetooth on.`}</p>
-          <button class="dp-btn dp-btn--ghost" data-act="back" data-dp-focusable data-autofocus>Cancel</button>
-        </div>`,
+      html: (s) => brandStage(s, { filled: true, tone: "connecting", text: STAGES[0], loading: true }),
       mount(el, ctx, p) {
-        ctx.state.failed = false;
-        let i = 0;
-        const stage = el.querySelector("#conn-stage");
-        const next = () => {
-          i++;
-          if (i < STAGES.length) {
-            stage.textContent = STAGES[i];
-            stage.classList.remove("is-changing");
-            void stage.offsetWidth;
-            stage.classList.add("is-changing");
-            ctx.later(next, 900);
-          } else if (p.fail) {
-            ctx.replace("failed");
-          } else {
-            el.querySelector("#conn").className = "dp-connecting dp-connecting--done";
-            el.querySelector("#conn .dp-connecting__core").innerHTML = '<i data-dp-icon="permissions"></i>';
-            DP.init(el);
-            stage.textContent = "CarPlay connected";
-            ctx.state.connected = true;
-            ctx.later(() => {
-              ctx.home();
-              DP.toast("CarPlay connected", { host: ctx.host });
-            }, 1200);
-          }
-        };
-        ctx.later(next, 900);
+        startLoading(el, ctx, p);
       },
     },
 
@@ -598,7 +636,7 @@
       stack.length = 0;
       stack.push({ name: "home", params: {} });
       const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (reduce || !from?.matches(".scr-splash")) return render("home", {});
+      if (reduce || !from?.querySelector(".dp-splash")) return render("home", {});
       if (DP.libs.gsap) return morphHomeGsap(from);
 
       render("home", {}, { keep: from, enter: false });
@@ -629,7 +667,7 @@
           { ...MORPH, fill: "backwards" },
         );
       }
-      from.remove();
+      retire(from);
 
       // Everything that is new on Home arrives after the shared elements start moving.
       const arriving = [...to.querySelectorAll(".scr-home__left > *, .scr-home__rule, .scr-home__cta > *")];
@@ -668,7 +706,7 @@
       const mark = to.querySelector(".dp-wordmark__mark");
       const markTo = mark.getBoundingClientRect();
       const k = host.getBoundingClientRect().width / host.offsetWidth || 1;
-      from.remove();
+      retire(from);
 
       const tl = gsap.timeline({
         onComplete: () => {
@@ -695,6 +733,69 @@
       return tl;
     }
 
+    // The screen being left: its shared parts hide at once (their twins are flying), the
+    // rest fades out over 300ms instead of vanishing, then it is removed.
+    const SHARED = ".dp-splash__svg, .dp-wordmark__mark, .dp-wordmark__lockup > *, .dp-wordmark__tagline";
+    function retire(el) {
+      el.classList.add("is-retiring");
+      delete el.dataset.dpFocusScope;
+      el.querySelectorAll(SHARED).forEach((s) => (s.style.visibility = "hidden"));
+      const done = () => el.remove();
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
+      el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "ease-out", fill: "forwards" }).finished.then(done, done);
+    }
+
+    /*
+     * Home -> loading screen: the reverse of the splash morph. The wordmark on the loading
+     * screen starts where it sits on Home and glides to the centre; the mark grows from its
+     * Home size. The device card and button fade with Home. Needs GSAP (Flip); without it
+     * the loading screen just slides in.
+     */
+    function morphToLoading(params) {
+      const from = current;
+      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (stack.length) stack[stack.length - 1].focus = DP.focus.current?.dataset?.fid;
+      stack.push({ name: "connecting", params });
+      if (reduce || !DP.libs.gsap || !from?.matches(".scr-home")) return render("connecting", params);
+
+      const gsap = DP.libs.gsap;
+      const Flip = window.Flip;
+      const text = [".dp-wordmark__name", ".dp-wordmark__fork", ".dp-wordmark__tagline"];
+      text.forEach((sel, i) => (from.querySelector(sel).dataset.flipId = `wm-${i}`));
+      const flipState = Flip.getState(from.querySelectorAll("[data-flip-id]"));
+      const markFrom = from.querySelector(".dp-wordmark__mark").getBoundingClientRect();
+
+      render("connecting", params, { keep: from, enter: false, vt: false });
+      const to = current;
+      text.forEach((sel, i) => (to.querySelector(sel).dataset.flipId = `wm-${i}`));
+      const svg = to.querySelector(".dp-splash__svg");
+      // The splash SVG is padded evenly round the mark, so its centre is the mark's centre.
+      const markTo = to.querySelector(".dp-splash__fill").getBoundingClientRect();
+      const k = host.getBoundingClientRect().width / host.offsetWidth || 1;
+      retire(from);
+
+      const tl = gsap.timeline({
+        onComplete: () => {
+          to.classList.remove("is-morphing");
+          gsap.set([svg, ...to.querySelectorAll("[data-flip-id]")], { clearProps: "transform" });
+        },
+      });
+      tl.add(Flip.from(flipState, { targets: to.querySelectorAll("[data-flip-id]"), duration: 0.85, ease: "expo.out", scale: true }), 0);
+      tl.fromTo(
+        svg,
+        {
+          x: (markFrom.left + markFrom.width / 2 - (markTo.left + markTo.width / 2)) / k,
+          y: (markFrom.top + markFrom.height / 2 - (markTo.top + markTo.height / 2)) / k,
+          scale: markFrom.width / markTo.width,
+        },
+        { x: 0, y: 0, scale: 1, duration: 0.85, ease: "expo.out" },
+        0,
+      );
+      tl.from(to.querySelectorAll(".scr-corner:not([hidden])"), { opacity: 0, y: 12, duration: 0.5, stagger: 0.08, ease: "expo.out" }, 0.35);
+      api.morph = tl;
+      return tl;
+    }
+
     function go(name, params = {}) {
       if (stack.length) stack[stack.length - 1].focus = DP.focus.current?.dataset?.fid;
       stack.push({ name, params });
@@ -702,6 +803,8 @@
     }
 
     function back() {
+      // Leaving the loading screen glides the wordmark back to Home.
+      if (current?.matches(".scr-connecting")) return Promise.resolve(morphHome());
       if (stack.length <= 1) return Promise.resolve();
       stack.pop();
       const top = stack[stack.length - 1];
@@ -725,7 +828,10 @@
     async function act(a, el) {
       const [verb, arg] = a.split(/:(.*)/s);
       switch (verb) {
-        case "go": return go(arg, arg === "connecting" ? { fail: host.dataset.fail === "1" } : {});
+        case "go":
+          if (arg === "connecting") return morphToLoading({ fail: host.dataset.fail === "1" });
+          return go(arg);
+        case "cancel-connect": return morphHome();
         case "replace": return ctx.replace(arg);
         case "home": return ctx.home();
         case "back": return back();

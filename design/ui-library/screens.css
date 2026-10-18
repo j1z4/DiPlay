@@ -75,11 +75,28 @@
 
 /* ---------- Splash ---------- */
 
-.scr-splash { flex: 1; display: grid; place-items: center; }
-.scr-splash .dp-splash { width: 600px; gap: 36px; }
-.scr-splash .dp-splash__svg { width: 220px; }
-.scr-splash .dp-wordmark__lockup { font-size: 72px; }
-.scr-splash .dp-wordmark__tagline { font-size: 22px; }
+/* The brand stage: the splash at boot, and the loading screen while connecting. */
+.scr-brand { flex: 1; display: grid; place-items: center; }
+.scr-brand .dp-splash { width: 600px; gap: 36px; }
+.scr-brand .dp-splash__svg { width: 220px; }
+.scr-brand .dp-wordmark__lockup { font-size: 72px; }
+.scr-brand .dp-wordmark__tagline { font-size: 22px; }
+
+/* Corners: status bottom-left, the escape hatch bottom-right. */
+.scr-corner {
+  position: absolute;
+  left: 48px;
+  bottom: 40px;
+  display: grid;
+  gap: 6px;
+  max-width: 560px;
+}
+.scr-corner--right { left: auto; right: 40px; bottom: 28px; }
+.scr-corner[hidden] { display: none; }
+.scr-corner__hint { font: var(--dp-text-callout); color: var(--dp-text-tertiary); }
+
+/* The screen being left fades its own parts while the shared ones fly (prototype.js). */
+.scr.is-retiring { background: transparent; pointer-events: none; }
 
 /* ---------- Center column: connecting / failed ---------- */
 

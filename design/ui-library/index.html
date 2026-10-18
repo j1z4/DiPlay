@@ -236,7 +236,8 @@
         <tr><td>Fill</td><td>1.25 – 2.05 s</td><td>500 – 900 ms</td><td>The gradient fades in and the mark settles from 96% to 100%.</td></tr>
         <tr><td>Release</td><td>1.8 – 2.6 s</td><td>750 – 1000 ms</td><td>The outline and glow dissolve, leaving the filled mark.</td></tr>
         <tr><td>Wordmark</td><td>1.9 – 2.6 s</td><td>(app content)</td><td>"OpenPlay" and the tagline rise in.</td></tr>
-        <tr><td>Morph to Home</td><td>3.0 – 3.8 s</td><td>(app content)</td><td>The mark, name and tagline glide and scale into their places on Home as shared elements. The device card, Settings, status and Connect fade up behind them, 70ms apart.</td></tr>
+        <tr><td>Loading</td><td>from 2.6 s</td><td>(app content)</td><td>With "Connect when OpenPlay opens" on, the splash becomes the loading screen. A light runs round the outline, and the bottom-left status ticks through the stages, color-coded. It ends with a pop and green "CarPlay connected", or a shake and red "Connection interrupted".</td></tr>
+        <tr><td>Morph to Home</td><td>after loading, or 3.2 s</td><td>(app content)</td><td>The mark, name and tagline glide and scale into their places on Home as shared elements. The device card, Settings and Connect fade up behind them, 70ms apart. The splash's own corners fade out.</td></tr>
       </table>
 
       <h2>Files</h2>
@@ -566,8 +567,9 @@
       <h2>Flow map</h2>
       <table class="lib-table">
         <tr><th>From</th><th>Action</th><th>To</th></tr>
-        <tr><td>Splash</td><td>(automatic, 3.0 s)</td><td>Morphs into Home: the logo and wordmark move to their Home positions</td></tr>
-        <tr><td>Home</td><td>Connect phone</td><td>Connecting → connected, or failed</td></tr>
+        <tr><td>Splash</td><td>(automatic)</td><td>Connects in place when "Connect when OpenPlay opens" is on, then morphs into Home. Otherwise it shows "Ready to connect" and morphs at 3.2 s.</td></tr>
+        <tr><td>Home</td><td>Connect phone</td><td>The wordmark glides back to the centre and the splash becomes the loading screen. Status is bottom-left, Cancel bottom-right. When it connects, it morphs back to Home; on failure it goes to the Failed screen.</td></tr>
+        <tr><td>Loading</td><td>Cancel, or Esc</td><td>Glides back to Home</td></tr>
         <tr><td>Home</td><td>Choose this Device / Connection</td><td>Picker page, then back to Home with the new value</td></tr>
         <tr><td>Home</td><td>Settings</td><td>Settings, starting on Overview</td></tr>
         <tr><td>Settings</td><td>Focus a rail item</td><td>The content pane swaps without a press</td></tr>
@@ -589,6 +591,10 @@
       <h2>Home after a failed connection</h2>
       <p>The same card line turns red after a failure. Before, nothing on Home showed it.</p>
       <div class="cmp" data-before="compare/before-home.png" data-after="compare/after-home-failed.png"></div>
+
+      <h2>Connecting: the splash is the loading screen</h2>
+      <p>The separate connecting screen is gone. Connecting happens on the splash: the logo stays centered with a light running round its outline, and the stage reads bottom-left in the color-coded status line, with Cancel bottom-right. At boot the splash flows straight into loading when "Connect when OpenPlay opens" is on. From Home, the wordmark glides back to the center first.</p>
+      <div class="cmp" data-before="compare/before-loading.png" data-after="compare/after-loading.png"></div>
 
       <h2>Settings</h2>
       <p>Phosphor replaces the app's mixed filled and outline icons with one bold family. The original app's in-CarPlay menu is on the far left for reference.</p>

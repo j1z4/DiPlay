@@ -781,3 +781,73 @@ body > .dp-toast-stack { position: fixed; }
 }
 .dp-card__item--status[data-tone="waiting"] .dp-card__dot { animation: dp-breathe 2.4s var(--dp-ease-in-out) infinite; box-shadow: none; }
 .dp-card__item--status[data-tone="connecting"] .dp-card__dot { animation: dp-pulse 1.2s var(--dp-ease-out) infinite; color: var(--tone); }
+
+/* ---------- Status line ---------- */
+
+/*
+ * The same color code as the card's status, as a free-standing line: a dot and text.
+ * The splash / loading screen shows it in the bottom-left corner.
+ */
+.dp-statusline {
+  --tone: var(--dp-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font: 600 18px / 1.2 var(--dp-font);
+  color: color-mix(in srgb, var(--tone) 70%, var(--dp-text));
+  transition: color var(--dp-dur-base) var(--dp-ease-out);
+}
+.dp-statusline[data-tone="waiting"] { --tone: var(--dp-text-secondary); color: var(--dp-text-secondary); }
+.dp-statusline[data-tone="connecting"] { --tone: var(--dp-brand-strong); }
+.dp-statusline[data-tone="connected"] { --tone: var(--dp-success); }
+.dp-statusline[data-tone="warning"] { --tone: var(--dp-warning); }
+.dp-statusline[data-tone="failed"] { --tone: var(--dp-danger); }
+.dp-statusline .dp-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tone);
+  color: var(--tone);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--tone) 70%, transparent);
+  transition: background-color var(--dp-dur-base), box-shadow var(--dp-dur-base);
+}
+.dp-statusline[data-tone="waiting"] .dp-dot { animation: dp-breathe 2.4s var(--dp-ease-in-out) infinite; box-shadow: none; }
+.dp-statusline[data-tone="connecting"] .dp-dot { animation: dp-pulse 1.2s var(--dp-ease-out) infinite; }
+.dp-statusline__text.is-changing { animation: dp-value-swap var(--dp-dur-base) var(--dp-ease-out); }
+
+/* ---------- Splash as a loading screen ---------- */
+
+/*
+ * .is-filled shows the finished mark at once (entering from Home).
+ * .is-loading sends a short light around the outline, over and over, while connecting.
+ * .is-done pops the mark when the session starts; .is-failed shakes it once.
+ */
+.dp-splash.is-filled .dp-splash__fill { opacity: 1; transform: none; animation: none; }
+.dp-splash.is-filled .dp-splash__trace,
+.dp-splash.is-filled .dp-splash__glow { opacity: 0; animation: none; }
+.dp-splash.is-filled .dp-splash__after { opacity: 1; animation: none; }
+.dp-splash__orbit {
+  fill: none;
+  opacity: 0;
+  stroke-dasharray: 0.14 0.86;
+  stroke-dashoffset: 0;
+  transition: opacity var(--dp-dur-slow) var(--dp-ease-out);
+}
+.dp-splash.is-loading .dp-splash__orbit { opacity: 1; animation: dp-orbit 1.8s linear infinite; }
+@keyframes dp-orbit { to { stroke-dashoffset: -1; } }
+.dp-splash.is-done .dp-splash__svg { animation: dp-success-pop 0.6s var(--dp-ease-spring); }
+.dp-splash.is-failed .dp-splash__svg { animation: dp-shake 0.5s var(--dp-ease-out); }
+@keyframes dp-success-pop {
+  40% { transform: scale(1.07); filter: drop-shadow(0 0 24px var(--dp-brand-glow)); }
+  100% { transform: scale(1); }
+}
+@keyframes dp-shake {
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dp-splash.is-loading .dp-splash__orbit { animation: none; opacity: 0; }
+}

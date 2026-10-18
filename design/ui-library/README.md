@@ -59,6 +59,8 @@ The **Before & after** page compares screenshots of the previous version (`compa
 | `openplay-splash.json` (+ `.lottie.js`) | The trace as a Lottie animation for lottie-web, lottie-android and boot-animation frames. Regenerate with `python3 design/ui-library/brand/build_lottie.py` |
 | `avd_diplay_splash.xml` + `diplay_mark_path.xml` | The Android 12+ splash icon (AnimatedVectorDrawable, 1000 ms). Copy them to `res/drawable/` and `res/values/` |
 
+The splash is also the loading screen. In the walkthrough, connecting happens on the splash layout: a light runs round the mark (`.dp-splash.is-loading`), and a color-coded `.dp-statusline` sits in the bottom-left corner. It ends with `.is-done` (pop, then a morph into Home) or `.is-failed` (shake). `<div data-dp-splash="filled">` starts with the mark already drawn.
+
 In pages, `<i data-dp-mark>` renders the mark (`data-dp-mark="mono"` for one color), and `<div data-dp-splash>` renders the trace. `DP.replaySplash(el)` plays it again.
 
 ## Rules carried over from the app
