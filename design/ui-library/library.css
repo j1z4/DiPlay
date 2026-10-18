@@ -470,6 +470,11 @@ kbd {
   .cmp-live { grid-template-columns: 1fr; }
 }
 
+.cmp-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
+.cmp-gallery figure { margin: 0; }
+.cmp-gallery img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border: 1px solid var(--lib-line); border-radius: 14px; }
+.cmp-gallery figcaption { margin-top: 8px; font-size: 13px; color: var(--lib-faint); }
+
 /* ---------- Embed mode (?embed=1): only the walkthrough frame ---------- */
 
 .lib-embed { background: #000; }

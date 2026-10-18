@@ -28,18 +28,20 @@ document.getElementById("f").addEventListener("load", async () => {
     await key("ArrowDown");
     log(fid() === "cat:connection" && d.querySelector(".scr-pane").textContent.includes("Automatic connection"), `focus down swaps pane to Connection (${fid()})`);
     await key("ArrowRight");
-    log(fid() === "toggle:connectOnOpen", `right enters pane at first row (${fid()})`);
+    log(fid() === "button:Open connection setup", `right enters pane at its first row (${fid()})`);
+    await key("ArrowDown", 2);
+    log(fid() === "toggle:connectOnOpen", `down reaches the first toggle (${fid()})`);
     const before = w.DP.focus.current.getAttribute("aria-checked");
     await key("Enter");
     log(w.DP.focus.current.getAttribute("aria-checked") !== before, `enter toggles switch (${before} -> ${w.DP.focus.current.getAttribute("aria-checked")})`);
     await key("ArrowDown", 2);
-    log(fid() === "pick:connectionMode", `down twice reaches picker row (${fid()})`);
+    log(fid() === "picker:connectionMode", `down twice reaches picker row (${fid()})`);
     await key("Enter");
     log(screen().includes("scr-picker"), `enter pushes picker (${screen()})`);
     await key("ArrowDown");
     await key("Enter");
     await wait(200);
-    log(screen().includes("scr-settings") && fid() === "pick:connectionMode", `choose pops back with focus restored (${fid()})`);
+    log(screen().includes("scr-settings") && fid() === "picker:connectionMode", `choose pops back with focus restored (${fid()})`);
     log(d.querySelector('.scr-pane [data-value-of="connectionMode"]').textContent === "USB", "value updated to USB");
     await key("ArrowLeft");
     log(fid() === "cat:connection", `left returns to current category (${fid()})`);
@@ -92,6 +94,30 @@ document.getElementById("f").addEventListener("load", async () => {
     const landed = pick(d.querySelector("#proto .scr-home"));
     const moved = landed.map((l, i) => Math.hypot(l.x - splashAt[i].x, l.y - splashAt[i].y));
     log(moved.every((m) => m > 20) && d.querySelector("#proto .dp-wordmark__mark").getAnimations().length === 0, `shared elements land on Home's layout (moved ${moved.map((m) => m.toFixed(0)).join(" / ")} px)`);
+
+    // Every category renders from the catalog, and dependent rows appear live.
+    w.location.hash = "walkthrough/settings";
+    await wait(400);
+    await settle();
+    const counts = [];
+    for (const rail of d.querySelectorAll("#proto .dp-rail__item")) {
+      rail.click();
+      await wait(80);
+      const pane = d.querySelector("#proto .scr-pane");
+      counts.push(`${rail.dataset.cat}:${pane.querySelectorAll(".dp-row, .scr-note, .scr-swatch").length}${/undefined|NaN/.test(pane.textContent) ? "!" : ""}`);
+    }
+    log(counts.length === 10 && counts.every((c) => !c.endsWith("!") && !c.endsWith(":0")), `all 10 categories render (${counts.join(" ")})`);
+    d.querySelector('#proto [data-cat="advanced"]').click();
+    await wait(80);
+    const hadSquare = !!d.querySelector('#proto [data-fid="picker:squarePicture"]');
+    d.querySelector('#proto [data-fid="toggle:rotate"]').click();
+    await wait(150);
+    log(!hadSquare && !!d.querySelector('#proto [data-fid="picker:squarePicture"]'), "turning on screen rotation shows Square picture live");
+    d.querySelector('#proto [data-fid="toggle:rotate"]').click();
+    await wait(150);
+    w.location.hash = "walkthrough/home";
+    await wait(400);
+    await settle();
 
     // Connect from Home: the splash becomes the loading screen, with the status bottom-left.
     await wait(500);

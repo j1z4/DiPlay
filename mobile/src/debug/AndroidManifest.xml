@@ -4,4 +4,18 @@
     <application android:label="DiPlay HUD Test" tools:replace="android:label">
     <receiver android:name="com.shilapi.xcertplay.hud.StarterBridgeReceiver" android:exported="true" android:permission="android.permission.DUMP" />
     <activity android:name="com.shilapi.xcertplay.hud.StandaloneHudDemoActivity" android:exported="true" android:permission="android.permission.DUMP" />
+    <!-- OpenPlay UI preview (design/ui-library). Debug builds only; its own icon and task. -->
+    <activity
+        android:name="com.shilapi.xcertplay.openplay.OpenPlayPreviewActivity"
+        android:label="OpenPlay preview"
+        android:exported="true"
+        android:taskAffinity="com.shilapi.xcertplay.openplay"
+        android:screenOrientation="sensorLandscape"
+        android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+        android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+    </activity>
     </application></manifest>

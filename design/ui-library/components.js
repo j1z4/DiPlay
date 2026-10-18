@@ -480,7 +480,11 @@
     if (dir) {
       // A focused slider takes left/right as value changes.
       const range = focus.current?.querySelector?.("input[type=range]");
-      if (range && (dir === "left" || dir === "right")) {
+      const stepper = focus.current?.matches?.("[data-dp-stepper]");
+      if (stepper && (dir === "left" || dir === "right")) {
+        // A focused number stepper takes left/right as − / +.
+        focus.current.dispatchEvent(new CustomEvent("dp-step", { bubbles: true, detail: dir === "right" ? 1 : -1 }));
+      } else if (range && (dir === "left" || dir === "right")) {
         range.value = Number(range.value) + Number(range.step || 1) * (dir === "right" ? 1 : -1);
         paintSlider(range);
         range.dispatchEvent(new Event("input", { bubbles: true }));

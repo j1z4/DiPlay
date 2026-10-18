@@ -610,6 +610,18 @@
       <div class="cmp" data-before="compare/before-setup.png" data-after="compare/after-setup.png"></div>
       <div class="cmp" data-before="compare/before-failed.png" data-after="compare/after-failed.png" style="margin-top:16px"></div>
 
+      <h2>On Android: the real app build</h2>
+      <p>The same design, ported to Jetpack Compose inside the app (debug builds only, under its own "OpenPlay preview" icon), running on the <code>DiPlay</code> Android 15 emulator at 2560 × 1600. Settings come from the same catalog as this site. The shipping DiPlay screens are unchanged.</p>
+      <div class="cmp-gallery">
+        <figure><img src="compare/android-boot-trace.png" alt="Android: splash trace" loading="lazy"><figcaption>Boot: the trace, "Starting OpenPlay…" bottom-left</figcaption></figure>
+        <figure><img src="compare/android-boot-wordmark.png" alt="Android: splash with wordmark" loading="lazy"><figcaption>The fill settles, the wordmark rises</figcaption></figure>
+        <figure><img src="compare/android-boot-loading.png" alt="Android: loading screen" loading="lazy"><figcaption>Loading: the mark alone, a light round its edge</figcaption></figure>
+        <figure><img src="compare/android-home.png" alt="Android: home" loading="lazy"><figcaption>Home: the status in the device card</figcaption></figure>
+        <figure><img src="compare/android-settings-overview.png" alt="Android: settings overview" loading="lazy"><figcaption>Settings: rail and catalog panes</figcaption></figure>
+        <figure><img src="compare/android-settings-advanced-rotate.png" alt="Android: advanced settings" loading="lazy"><figcaption>Advanced: Square picture appears live; Reconnect bar</figcaption></figure>
+        <figure><img src="compare/android-confirm-dialog.png" alt="Android: apply and reconnect dialog" loading="lazy"><figcaption>"Apply and reconnect" before a reconnecting change</figcaption></figure>
+      </div>
+
       <h2>Motion, side by side</h2>
       <p>Screenshots can't show motion. Both frames below run the real library; the left one has every library switched off (<code>?libs=off</code>), which is exactly the previous version. Replay both to watch the splash trace and the morph into Home, then click through either frame.</p>
       <div class="cmp-live">
@@ -657,6 +669,7 @@
 <script src="https://cdn.jsdelivr.net/npm/motion@11.18.2/dist/motion.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie_light.min.js"></script>
 <script src="brand/openplay-splash.lottie.js"></script>
+<script src="settings/catalog.js"></script>
 <script src="icons.js"></script>
 <script src="components.js"></script>
 <script src="prototype.js"></script>

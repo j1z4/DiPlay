@@ -258,3 +258,82 @@ html[data-dp-vt="back"]::view-transition-new(*.dp-hu) { animation-name: dp-vt-in
 
 /* The brand glow behind the wordmark; GSAP fades it in during the splash morph. */
 .scr-home__right::before { opacity: var(--glow-o, 0.45); }
+
+/* ---------- Settings from the catalog ---------- */
+
+.scr-pane__head { padding: 0 var(--dp-space-5) var(--dp-space-6); }
+.scr-pane__title { margin: 0; font: var(--dp-text-title); font-size: 28px; color: var(--dp-text); }
+.scr-pane__sub { margin: 4px 0 0; font: var(--dp-text-callout); color: var(--dp-text-secondary); }
+.scr-pane__inner > .dp-banner { margin-bottom: var(--dp-block-gap); }
+
+.dp-group__header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dp-group__header .dp-glyph,
+.dp-group__header .dp-ph { font-size: 16px; width: 16px; height: 16px; color: var(--dp-text-tertiary); }
+
+/* What a row needs in the real app (hardware, ADB...). Shown so every feature is visible. */
+.scr-req {
+  display: inline-block;
+  justify-self: start;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--dp-warning) 12%, transparent);
+  color: color-mix(in srgb, var(--dp-warning) 80%, var(--dp-text));
+  font: 600 12px / 1.2 var(--dp-font);
+  letter-spacing: 0.02em;
+}
+.dp-group__header .scr-req { margin: 0 0 0 4px; }
+.dp-row.is-focused .scr-req { background: rgba(0, 0, 0, 0.08); color: var(--dp-focus-value); }
+.scr-slider-row .scr-req { margin-left: 0; }
+
+.scr-note {
+  margin: 0;
+  padding: 2px var(--dp-space-5) 4px;
+  max-width: 64ch;
+  font: var(--dp-text-callout);
+  color: var(--dp-text-tertiary);
+}
+.scr-note--warning { color: var(--dp-warning); }
+.scr-label--warning { color: var(--dp-warning); }
+.scr-row--primary { background: var(--dp-accent); color: var(--dp-on-accent); }
+.scr-row--primary:hover { background: color-mix(in srgb, var(--dp-accent), white 8%); }
+
+/* Number stepper: − value +, and left / right on the D-pad. */
+.scr-stepper-row { cursor: default; }
+.scr-stepper { display: inline-flex; align-items: center; gap: 10px; }
+.scr-stepper__btn {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--dp-surface-2);
+  color: var(--dp-text);
+  font: 600 20px / 1 var(--dp-font);
+  cursor: pointer;
+  transition: background-color var(--dp-dur-fast);
+}
+.scr-stepper__value { min-width: 96px; text-align: center; font: 600 18px / 1 var(--dp-font); font-variant-numeric: tabular-nums; color: var(--dp-text-secondary); }
+.scr-stepper-row.is-focused .scr-stepper__btn { background: rgba(0, 0, 0, 0.1); color: var(--dp-focus-text); }
+.scr-stepper-row.is-focused .scr-stepper__value { color: var(--dp-focus-text); }
+
+/* Ambient colours: 31 swatches, multi-select while following music. */
+.scr-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 10px; padding: 8px var(--dp-space-5); }
+.scr-swatch {
+  aspect-ratio: 1;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--sw);
+  cursor: pointer;
+  outline: none;
+  transition: transform var(--dp-dur-base) var(--dp-ease-spring), border-color var(--dp-dur-fast), box-shadow var(--dp-dur-fast);
+}
+.scr-swatch[aria-pressed="true"] { border-color: var(--dp-text); box-shadow: 0 0 0 3px var(--dp-bg) inset; }
+.scr-swatch.is-focused,
+.scr-swatch:focus-visible { transform: scale(1.15); box-shadow: 0 0 0 3px var(--dp-focus-ring); }
+
+/* Nested pages scroll their list; long option lists start at the top, not off-screen. */
+.scr-split__list { justify-content: safe center; }
+.scr-split--page { grid-template-columns: 0.8fr 1.4fr; }
+.scr-page-list { justify-content: flex-start; padding-top: var(--dp-space-2); mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 48px), transparent); }
+.scr-page-list__inner { display: grid; gap: var(--dp-row-gap); }

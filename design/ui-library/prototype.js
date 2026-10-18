@@ -13,154 +13,29 @@
 
   /* ---------- Settings model ---------- */
 
-  // Categories and placement follow SettingsInformationArchitecture in DiPlayActivity.kt.
-  const CATEGORIES = [
-    { id: "overview", icon: "overview", title: "Overview" },
-    { id: "connection", icon: "connection", title: "Connection" },
-    { id: "display", icon: "display", title: "Display" },
-    { id: "audio", icon: "audio", title: "Audio" },
-    { id: "navigation", icon: "navigation", title: "Navigation" },
-    { id: "vehicle", icon: "car", title: "Vehicle" },
-    { id: "diagnostics", icon: "diagnostics", title: "Diagnostics" },
-    { id: "advanced", icon: "advanced", title: "Advanced" },
-    { id: "about", icon: "about", title: "About" },
-  ];
+  // Every setting comes from settings/catalog.json (built into settings/catalog.js), the same
+  // file the Android preview reads. Categories and cards follow DiPlayActivity.kt.
+  const CATALOG = window.OPENPLAY_SETTINGS;
+  const CATEGORIES = CATALOG.categories.map(({ id, icon, title }) => ({ id, icon, title }));
 
-  const PICKERS = {
-    iphone: { title: "Choose iPhone", icon: "connection", note: "OpenPlay connects to this iPhone when it is nearby.", options: ["Device Name", "Work iPhone"] },
-    connectionMode: { title: "Default connection mode", icon: "connection", note: "Wireless joins the car hotspot. USB uses the cable and charges the iPhone.", options: ["Wi-Fi", "USB"], reconnect: true },
-    charging: { title: "iPhone charging", icon: "connection", note: "Lower current keeps older head units stable.", options: ["Normal 2.4 A", "Reduced 1.5 A", "Low 0.5 A"], reconnect: true },
-    nightMode: { title: "CarPlay night mode", icon: "night", note: "System follows the car's headlights signal.", options: ["System", "Ambient light", "Day", "Night", "Schedule"] },
-    carplaySize: { title: "CarPlay size", icon: "display", note: "Applies at the next connection.", options: ["Full screen", "Widescreen", "Standard"], reconnect: true },
-    musicBuffer: { title: "Music buffer · wireless", icon: "audio", note: "A larger buffer rides out Wi-Fi drops but starts later.", options: ["Low latency", "Balanced", "Smooth"] },
-    fingers: { title: "Quick menu swipe-down fingers", icon: "controls", note: "How many fingers open the OpenPlay menu inside CarPlay.", options: ["2 fingers", "3 fingers", "Off"] },
-    siriKey: { title: "Siri key", icon: "car", note: "The steering-wheel key that starts Siri.", options: ["Voice button", "Phone button", "None"] },
-    language: { title: "App language", icon: "language", note: "CarPlay itself follows the iPhone's language.", options: ["English", "العربية", "Italiano", "Русский", "简体中文", "繁體中文", "日本語"] },
-  };
+  // Each keyed row, by key, with the icon of the card it lives in (picker pages show it).
+  const ROWS = {};
+  function walk(list, icon) {
+    for (const r of list) if (r.key && !ROWS[r.key]) ROWS[r.key] = { ...r, icon: r.icon || icon };
+  }
+  for (const cat of CATALOG.categories) for (const card of cat.cards) walk(card.rows || [], card.icon || cat.icon);
+  for (const page of Object.values(CATALOG.pages)) walk(page.rows, page.icon);
 
-  const DEFAULTS = {
-    iphone: "Device Name",
-    connectionMode: "Wi-Fi",
-    charging: "Normal 2.4 A",
-    nightMode: "System",
-    carplaySize: "Full screen",
-    musicBuffer: "Balanced",
-    fingers: "3 fingers",
-    siriKey: "Voice button",
-    language: "English",
-    appearance: "Dark",
-    fps: "60 fps",
-    connectOnOpen: true,
-    reconnectOnReturn: true,
-    openAfterStart: false,
-    autoUsb: true,
-    fullScreen: true,
-    reportLocation: true,
-    hideTop: false,
-    hideBottom: true,
-    speakerCalls: false,
-    hud: true,
-    rhd: false,
-    fpsCounter: false,
-    splitScreen: false,
-    hevc: false,
-    backgroundUpdates: true,
-    navVolume: 3,
-    interfaceSize: 100,
-  };
+  const DEFAULTS = Object.fromEntries(Object.entries(ROWS).map(([k, r]) => [k, structuredClone(r.default)]));
 
-  const row = {
-    toggle: (key, label, hint) => ({ kind: "toggle", key, label, hint }),
-    pick: (key, label) => ({ kind: "pick", key, label }),
-    link: (label, act, opts = {}) => ({ kind: "link", label, act, ...opts }),
-    danger: (label, act) => ({ kind: "danger", label, act }),
-    info: (label, value) => ({ kind: "info", label, value }),
-    slider: (key, label, min, max, step, format) => ({ kind: "slider", key, label, min, max, step, format }),
-    segment: (key, label, options) => ({ kind: "segment", key, label, options }),
-  };
+  // Settings that other rows depend on: changing one re-renders the pane so rows appear live.
+  const DEPENDED_ON = new Set();
+  for (const cat of CATALOG.categories) for (const card of cat.cards) for (const r of card.rows || []) Object.keys(r.when || {}).forEach((k) => DEPENDED_ON.add(k));
+  for (const page of Object.values(CATALOG.pages)) for (const r of page.rows) Object.keys(r.when || {}).forEach((k) => DEPENDED_ON.add(k));
 
-  const PANES = {
-    overview: [
-      { header: "Status", rows: [{ kind: "status" }] },
-      {
-        header: "Quick settings",
-        rows: [
-          row.toggle("connectOnOpen", "Connect when OpenPlay opens"),
-          row.pick("nightMode", "CarPlay night mode"),
-          row.toggle("fullScreen", "Full screen"),
-          row.toggle("reportLocation", "Report location to iPhone"),
-        ],
-      },
-      { header: "Help", rows: [row.link("Setup guide", "go:setup", { icon: "automation" }), row.pick("language", "App language")] },
-    ],
-    connection: [
-      {
-        header: "Automatic connection",
-        rows: [
-          row.toggle("connectOnOpen", "Connect when OpenPlay opens"),
-          row.toggle("reconnectOnReturn", "Connect when the selected iPhone reconnects"),
-          row.pick("connectionMode", "Default connection mode"),
-          row.toggle("openAfterStart", "Open after the car starts"),
-          row.pick("iphone", "Choose iPhone"),
-        ],
-      },
-      { header: "USB connection", rows: [row.toggle("autoUsb", "Auto-confirm USB permission"), row.pick("charging", "iPhone charging")] },
-      {
-        header: "Reset",
-        rows: [row.danger("Reset CarPlay Wi-Fi", "dialog:reset")],
-        footer: "Forgets the CarPlay Wi-Fi group on this head unit. Your iPhone stays paired.",
-      },
-    ],
-    display: [
-      { header: "Appearance", rows: [row.segment("appearance", "App appearance", ["Dark", "Light", "Auto"]), row.pick("nightMode", "CarPlay night mode")] },
-      {
-        header: "CarPlay picture",
-        rows: [
-          row.pick("carplaySize", "CarPlay size"),
-          row.segment("fps", "Frame rate", ["30 fps", "60 fps"]),
-          row.toggle("hideTop", "Hide top bar"),
-          row.toggle("hideBottom", "Hide bottom bar"),
-        ],
-      },
-      { header: "Interface", rows: [row.slider("interfaceSize", "Interface size", 80, 130, 5, "{v}%")] },
-    ],
-    audio: [
-      {
-        header: "Audio routing",
-        rows: [
-          row.slider("navVolume", "Navigation guidance volume", -12, 12, 1, "{v} dB"),
-          row.pick("musicBuffer", "Music buffer · wireless"),
-          row.toggle("speakerCalls", "Calls on the loudspeaker", "Route phone calls to the car speakers"),
-        ],
-      },
-    ],
-    navigation: [
-      { header: "Location", rows: [row.toggle("reportLocation", "Report location to iPhone", "Uses the car's GPS for Maps")] },
-      { header: "BYD navigation", rows: [row.toggle("hud", "Turn-by-turn on HUD and dashboard")] },
-    ],
-    vehicle: [
-      { header: "CarPlay controls", rows: [row.pick("fingers", "Quick menu swipe-down fingers"), row.toggle("rhd", "Right-hand drive")] },
-      { header: "Wheel keys", rows: [row.pick("siriKey", "Siri key")] },
-    ],
-    diagnostics: [
-      {
-        header: "Reports",
-        rows: [row.link("Save diagnostic report", "toast:Report saved"), row.link("Get the report on a phone", "toast:Scan the QR code on your phone"), row.toggle("fpsCounter", "FPS counter")],
-        footer: "Reports leave out phone numbers, names and locations.",
-      },
-    ],
-    advanced: [
-      { banner: "Change with care. These options depend on firmware and can break sound, video or the connection." },
-      {
-        header: "Display (experimental)",
-        rows: [row.toggle("splitScreen", "Split screen (experimental)"), row.toggle("hevc", "HEVC video (experimental)", "Applies at the next connection")],
-      },
-    ],
-    about: [
-      { header: "OpenPlay", rows: [row.info("Version", "0.2.21 · public preview"), row.link("Check for updates", "toast:OpenPlay is up to date"), row.toggle("backgroundUpdates", "Check in the background")] },
-      { header: "Settings", rows: [row.link("Back up settings", "toast:Scan the QR code to save a backup")] },
-    ],
-  };
+  function visible(r, s) {
+    return Object.entries(r.when || {}).every(([k, want]) => (Array.isArray(want) ? want.includes(s[k]) : s[k] === want));
+  }
 
   const STAGES = ["Getting CarPlay ready…", "Looking for your paired iPhone…", "Joining the car hotspot…", "Opening CarPlay…"];
 
@@ -189,36 +64,70 @@
 
   /* ---------- Rendering helpers ---------- */
 
+  function rowHint(r) {
+    const hint = r.hint ? `<span class="dp-row__hint">${esc(r.hint)}</span>` : "";
+    const req = r.requires ? `<span class="scr-req">${esc(r.requires)}</span>` : "";
+    return hint + req;
+  }
+
+  function stepperText(r, v) {
+    return `${Number(v).toLocaleString("en-US")} ${r.unit || ""}`.trim();
+  }
+
+  // One row of the catalog. Hidden rows ('when' not met) render nothing.
   function renderRow(r, s) {
+    if (!visible(r, s)) return "";
     const fid = `${r.kind}:${r.key || r.label}`;
     switch (r.kind) {
       case "toggle":
         return `<button class="dp-row" role="switch" aria-checked="${!!s[r.key]}" data-key="${r.key}" data-fid="${fid}" data-dp-focusable>
-          <span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span>${r.hint ? `<span class="dp-row__hint">${esc(r.hint)}</span>` : ""}</span>
+          <span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span>${rowHint(r)}</span>
           <span class="dp-switch"></span></button>`;
-      case "pick":
+      case "picker":
         return `<button class="dp-row" data-act="pick:${r.key}" data-fid="${fid}" data-dp-focusable>
-          <span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span></span>
+          <span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span>${r.requires ? `<span class="scr-req">${esc(r.requires)}</span>` : ""}</span>
           <span class="dp-row__value" data-value-of="${r.key}">${esc(s[r.key])}</span>${chevron}</button>`;
-      case "link":
-        return `<button class="dp-row" data-act="${r.act}" data-fid="${fid}" data-dp-focusable>
+      case "text":
+        return `<button class="dp-row" data-act="toast:Opens the keyboard to edit ${esc(r.label.toLowerCase())}" data-fid="${fid}" data-dp-focusable>
+          <span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span>${rowHint(r)}</span>
+          <span class="dp-row__value">${esc(s[r.key])}</span>${chevron}</button>`;
+      case "link": {
+        const act = r.page ? `page:${r.page}` : r.category ? `cat:${r.category}` : `toast:${r.toast || r.label}`;
+        const value = r.valueFrom === "ambientSummary" ? ambientSummary(s) : "";
+        return `<button class="dp-row" data-act="${esc(act)}" data-fid="${fid}" data-dp-focusable ${r.icon ? 'style="--h:72px"' : ""}>
           ${r.icon ? `<span class="dp-row__icon"><i data-dp-icon="${r.icon}"></i></span>` : ""}
-          <span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span></span>${chevron}</button>`;
-      case "danger":
-        return `<button class="dp-row dp-row--danger" data-act="${r.act}" data-fid="${fid}" data-dp-focusable>
-          <span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span></span></button>`;
+          <span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span>${value ? `<span class="dp-row__hint">${esc(value)}</span>` : rowHint(r)}</span>${chevron}</button>`;
+      }
+      case "button":
+        return `<button class="dp-row${r.primary ? " scr-row--primary" : ""}${r.danger ? " dp-row--danger" : ""}" data-act="${esc(r.act || `toast:${r.toast || r.label}`)}" data-fid="${fid}" data-dp-focusable>
+          <span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span>${rowHint(r)}</span></button>`;
+      case "note":
+        return `<p class="scr-note${r.tone === "warning" ? " scr-note--warning" : ""}">${esc(r.text)}</p>`;
       case "info":
         return `<div class="dp-row dp-row--info"><span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span></span>
           <span class="dp-row__value">${esc(r.value)}</span></div>`;
       case "slider":
         return `<div class="dp-row scr-slider-row" data-fid="${fid}" data-dp-focusable>
           <label class="dp-slider"><span class="dp-slider__head">${esc(r.label)} <span class="dp-slider__value"></span></span>
-          <input type="range" tabindex="-1" min="${r.min}" max="${r.max}" step="${r.step}" value="${s[r.key]}" data-key="${r.key}" data-format="${r.format}"></label></div>`;
+          <input type="range" tabindex="-1" min="${r.min}" max="${r.max}" step="${r.step}" value="${s[r.key]}" data-key="${r.key}" data-format="{v} ${esc(r.unit || "")}"></label>${r.requires ? `<span class="scr-req">${esc(r.requires)}</span>` : ""}</div>`;
+      case "number":
+        return `<div class="dp-row scr-stepper-row" data-dp-stepper data-key="${r.key}" data-fid="${fid}" data-dp-focusable>
+          <span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span>${rowHint(r)}</span>
+          <span class="scr-stepper"><button class="scr-stepper__btn" data-step="-1" tabindex="-1" aria-label="Less">−</button>
+          <span class="scr-stepper__value" data-value-of="${r.key}">${esc(stepperText(r, s[r.key]))}</span>
+          <button class="scr-stepper__btn" data-step="1" tabindex="-1" aria-label="More">+</button></span></div>`;
       case "segment":
         return `<div class="dp-row scr-segment-row"><span class="dp-row__body"><span class="dp-row__label">${esc(r.label)}</span></span>
           <div class="dp-segmented dp-segmented--compact" role="radiogroup" data-key="${r.key}"><span class="dp-segmented__thumb"></span>
           ${r.options.map((o) => `<button class="dp-segmented__option" role="radio" aria-checked="${s[r.key] === o}" data-value="${esc(o)}" data-fid="seg:${r.key}:${esc(o)}" data-dp-focusable>${esc(o)}</button>`).join("")}
           </div></div>`;
+      case "swatches": {
+        const picked = new Set(s[r.key]);
+        return `<div class="scr-swatches" role="group" aria-label="${esc(r.label)}">
+          ${Array.from({ length: r.count }, (_, i) => i + 1)
+            .map((n) => `<button class="scr-swatch" style="--sw:${swatchColor(n)}" aria-pressed="${picked.has(n)}" data-act="swatch:${r.key}:${n}" data-fid="sw:${n}" data-dp-focusable aria-label="Color ${n}"></button>`)
+            .join("")}</div>`;
+      }
       case "status": {
         const st = statusOf(s);
         return `<button class="dp-row" style="--h:76px" data-act="${s.connected ? "toast:CarPlay is running" : "go:connecting"}" data-fid="status" data-dp-focusable>
@@ -230,6 +139,18 @@
     return "";
   }
 
+  // The car's 31 ambient colours, spread round the hue wheel with white and cold white last.
+  function swatchColor(n) {
+    if (n === 30) return "#fff6e8";
+    if (n === 31) return "#e8f3ff";
+    return `hsl(${Math.round(((n - 1) / 29) * 340)}, 88%, 58%)`;
+  }
+
+  function ambientSummary(s) {
+    const mode = s.ambientFollow ? s.ambientMode : "Fixed";
+    return `${s.ambientOn ? "On" : "Off"} · ${mode} · ${s.ambientSpeed} · ${s.ambientColors.length} colors · brightness ${s.ambientBrightness}`;
+  }
+
   // One source for the connection state; the device card and Overview both read it.
   function statusOf(s) {
     if (s.connecting) return { tone: "connecting", text: "Connecting…", short: "Connecting" };
@@ -239,22 +160,34 @@
     return { tone: "waiting", text: "Ready to connect", short: "Ready" };
   }
 
-  function renderPane(cat, s) {
-    const groups = PANES[cat]
-      .map((g) => {
-        if (g.banner) return `<div class="dp-banner dp-banner--warning"><span class="dp-banner__text">${esc(g.banner)}</span></div>`;
-        return `<div class="dp-group">
-          ${g.header ? `<div class="dp-group__header">${esc(g.header)}</div>` : ""}
-          ${g.rows.map((r) => renderRow(r, s)).join("")}
-          ${g.footer ? `<div class="dp-group__footer">${esc(g.footer)}</div>` : ""}
-        </div>`;
-      })
-      .join("");
+  function renderCard(card, cat, s) {
+    if (card.kind === "banner") return `<div class="dp-banner dp-banner--warning"><span class="dp-banner__text">${esc(card.text)}</span></div>`;
+    if (card.kind === "status") return `<div class="dp-group"><div class="dp-group__header">Status</div>${renderRow({ kind: "status" }, s)}</div>`;
+    if (card.kind === "categories") {
+      const links = CATALOG.categories
+        .filter((c) => c.id !== cat.id)
+        .map((c) => `<button class="dp-row" style="--h:72px" data-act="cat:${c.id}" data-fid="catlink:${c.id}" data-dp-focusable>
+            <span class="dp-row__icon"><i data-dp-icon="${c.icon}"></i></span>
+            <span class="dp-row__body"><span class="dp-row__label${c.id === "advanced" ? " scr-label--warning" : ""}">${esc(c.title)}</span><span class="dp-row__hint">${esc(c.subtitle)}</span></span>${chevron}</button>`)
+        .join("");
+      return `<div class="dp-group"><div class="dp-group__header">${esc(card.title)}</div>${links}</div>`;
+    }
+    const rows = card.rows.map((r) => renderRow(r, s)).join("");
+    if (!rows.trim()) return "";
+    return `<div class="dp-group">
+      <div class="dp-group__header">${card.icon ? `<i data-dp-icon="${card.icon}"></i>` : ""}${esc(card.title)}${card.requires ? `<span class="scr-req">${esc(card.requires)}</span>` : ""}</div>
+      ${rows}
+    </div>`;
+  }
+
+  function renderPane(catId, s) {
+    const cat = CATALOG.categories.find((c) => c.id === catId);
+    const head = `<div class="scr-pane__head"><h2 class="scr-pane__title">${esc(cat.title)}</h2><p class="scr-pane__sub">${esc(cat.subtitle)}</p></div>`;
     const reconnect = s.reconnectNeeded
       ? `<div class="dp-banner"><span class="dp-banner__text">Saved. Some changes apply when CarPlay reconnects.</span>
          <button class="dp-btn dp-btn--accent dp-btn--sm" data-act="reconnect" data-fid="reconnect" data-dp-focusable>Reconnect now</button></div>`
       : "";
-    return `<div class="scr-pane__inner dp-stagger">${reconnect}${groups}</div>`;
+    return `<div class="scr-pane__inner dp-stagger">${head}${reconnect}${cat.cards.map((card) => renderCard(card, cat, s)).join("")}</div>`;
   }
 
   /* ---------- Brand stage: splash and loading screen ---------- */
@@ -486,7 +419,7 @@
           if (!el.isConnected) return document.removeEventListener("keydown", onKey, true);
           if (DP.focus.scope !== el) return;
           const cur = DP.focus.current;
-          if (e.key === "ArrowLeft" && cur?.closest(".scr-pane") && !cur.querySelector("input[type=range]") && !cur.matches(".dp-segmented__option:not(:first-of-type)")) {
+          if (e.key === "ArrowLeft" && cur?.closest(".scr-pane") && !cur.querySelector("input[type=range]") && !cur.matches("[data-dp-stepper]") && !cur.matches(".dp-segmented__option:not(:first-of-type)")) {
             DP.focus.set(el.querySelector('.dp-rail__item[aria-current="page"]'));
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -503,15 +436,15 @@
 
     picker: {
       html: (s, p) => {
-        const def = PICKERS[p.key];
+        const def = ROWS[p.key];
         return `
         <header class="scr-head">
           <button class="dp-btn dp-btn--icon dp-btn--sm" aria-label="Back" data-act="back" data-dp-focusable><i data-dp-icon="back"></i></button>
-          <h1 class="scr-head__title">${esc(def.title)}</h1>
+          <h1 class="scr-head__title">${esc(def.label)}</h1>
           <span class="scr-head__spacer"></span>
         </header>
         <div class="scr-split">
-          <div class="scr-split__art"><span class="scr-art"><i data-dp-icon="${def.icon}"></i></span><p>${esc(def.note)}</p></div>
+          <div class="scr-split__art"><span class="scr-art"><i data-dp-icon="${def.icon}"></i></span><p>${esc(def.hint || "")}</p></div>
           <div class="scr-split__list dp-stagger" data-dp-scroll>
             ${def.options
               .map(
@@ -521,6 +454,23 @@
               )
               .join("")}
           </div>
+        </div>`;
+      },
+    },
+
+    // A nested settings page from the catalog (Ambient light settings, Advanced vehicle data).
+    page: {
+      html: (s, p) => {
+        const page = CATALOG.pages[p.id];
+        return `
+        <header class="scr-head">
+          <button class="dp-btn dp-btn--icon dp-btn--sm" aria-label="Back" data-act="back" data-fid="back" data-dp-focusable><i data-dp-icon="back"></i></button>
+          <h1 class="scr-head__title">${esc(page.title)}</h1>
+          <span class="scr-head__spacer"></span>
+        </header>
+        <div class="scr-split scr-split--page">
+          <div class="scr-split__art"><span class="scr-art"><i data-dp-icon="${page.icon}"></i></span><p>${esc(page.note)}</p></div>
+          <div class="scr-split__list scr-page-list" data-dp-scroll><div class="scr-page-list__inner dp-stagger">${page.rows.map((r) => renderRow(r, s)).join("")}</div></div>
         </div>`;
       },
     },
@@ -859,17 +809,96 @@
     }
 
     async function choose(key, value) {
-      const changed = state[key] !== value;
+      const old = state[key];
       state[key] = value;
-      if (changed && PICKERS[key]?.reconnect && state.connected) state.reconnectNeeded = true;
       await back();
+      if (old === value) return;
       // The value slides in on the row the driver came back to.
-      if (changed) current.querySelectorAll(`[data-value-of="${key}"]`).forEach((v) => {
+      current.querySelectorAll(`[data-value-of="${key}"]`).forEach((v) => {
         v.classList.remove("is-changing");
         void v.offsetWidth;
         v.classList.add("is-changing");
       });
-      if (changed && PICKERS[key]?.reconnect && !state.connected) DP.toast("Saved. Applies at the next connection", { host });
+      applied(key, old);
+    }
+
+    // Re-renders the settings pane or nested page in place, keeping focus and scroll.
+    function refresh() {
+      const fid = DP.focus.current?.dataset?.fid;
+      const pane = current?.querySelector(".scr-pane");
+      const list = current?.querySelector(".scr-page-list");
+      const box = pane || list;
+      if (!box) return;
+      const top = box.scrollTop;
+      if (pane) pane.innerHTML = renderPane(state.cat, state).replace("dp-stagger", "");
+      else {
+        const page = CATALOG.pages[stack[stack.length - 1].params.id];
+        list.innerHTML = `<div class="scr-page-list__inner">${page.rows.map((r) => renderRow(r, state)).join("")}</div>`;
+      }
+      DP.init(box);
+      box.scrollTop = top;
+      const again = fid && current.querySelector(`[data-fid="${CSS.escape(fid)}"]`);
+      if (active && again) DP.focus.set(again, { scroll: false });
+    }
+
+    /*
+     * Every change lands here and follows the app's reconnect rules (DiPlayActivity.kt):
+     *   next     saved; the "Reconnect now" bar appears while CarPlay runs
+     *   now      reconnects at once (a toast while CarPlay runs)
+     *   confirm  asks "Apply and reconnect" first while CarPlay runs; Cancel reverts
+     * Rows that depend on the setting appear or disappear straight away.
+     */
+    async function applied(key, old) {
+      const r = ROWS[key];
+      if (!r) return;
+      let redraw = DEPENDED_ON.has(key) || key.startsWith("ambient");
+      if (r.reconnect === "confirm" && state.connected) {
+        const ok = await DP.dialog({
+          host,
+          title: r.label.replace(/ \(experimental\)$/, ""),
+          body: "This change reconnects CarPlay. Music and navigation pause for a few seconds.",
+          actions: [{ label: "Cancel", value: false }, { label: "Apply and reconnect", kind: "primary", value: true }],
+        });
+        if (!ok) {
+          state[key] = old;
+          return refresh();
+        }
+        DP.toast("Reconnecting CarPlay…", { host });
+      } else if (r.reconnect === "now" && state.connected) {
+        DP.toast("Reconnecting CarPlay…", { host });
+      } else if (r.reconnect === "next") {
+        if (state.connected && !state.reconnectNeeded) {
+          state.reconnectNeeded = true;
+          redraw = true;
+        } else if (!state.connected) {
+          DP.toast("Saved. Applies at the next connection", { host });
+        }
+      }
+      if (redraw) refresh();
+    }
+
+    // Sliders and steppers settle before their reconnect rule runs.
+    let settleTimer = null;
+    let settleFrom = null;
+    function appliedLater(key, old) {
+      if (settleFrom?.key !== key) settleFrom = { key, old };
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        const { key: k, old: o } = settleFrom;
+        settleFrom = null;
+        applied(k, o);
+      }, 600);
+    }
+
+    function step(row, dir) {
+      const key = row.dataset.key;
+      const r = ROWS[key];
+      const old = state[key];
+      const next = Math.min(r.max, Math.max(r.min, old + dir * r.step));
+      if (next === old) return;
+      state[key] = next;
+      row.querySelector(".scr-stepper__value").textContent = stepperText(r, next);
+      appliedLater(key, old);
     }
 
     async function act(a, el) {
@@ -883,6 +912,27 @@
         case "home": return ctx.home();
         case "back": return back();
         case "pick": return go("picker", { key: arg });
+        case "page": return go("page", { id: arg });
+        case "cat":
+          if (!current.matches(".scr-settings")) {
+            state.cat = arg;
+            return go("settings");
+          }
+          ctx.setCategory(arg);
+          if (active) DP.focus.set(current.querySelector(".scr-pane [data-dp-focusable]") || current.querySelector(`[data-cat="${arg}"]`));
+          return;
+        case "swatch": {
+          // Multi-select while following music, at least one colour (AmbientSwatchGrid.kt).
+          const [key, n] = [arg.split(":")[0], Number(arg.split(":")[1])];
+          const picked = new Set(state[key]);
+          if (!state.ambientFollow) picked.clear();
+          if (picked.has(n) && picked.size > 1) picked.delete(n);
+          else if (picked.has(n)) return DP.toast("Select at least one color", { host });
+          else picked.add(n);
+          state[key] = [...picked].sort((a, b) => a - b);
+          el.parentElement.querySelectorAll(".scr-swatch").forEach((b) => b.setAttribute("aria-pressed", String(picked.has(Number(b.dataset.act.split(":")[2])))));
+          return;
+        }
         case "choose": return choose(arg, el.dataset.value);
         case "toast": return DP.toast(arg, { host });
         case "settings-root":
@@ -936,10 +986,23 @@
     });
     host.addEventListener("dp-change", (e) => {
       const key = e.target.closest("[data-key]")?.dataset.key;
-      if (key) state[key] = e.detail.value;
+      if (!key) return;
+      const old = state[key];
+      state[key] = e.detail.value;
+      applied(key, old);
     });
     host.addEventListener("input", (e) => {
-      if (e.target.dataset.key) state[e.target.dataset.key] = Number(e.target.value);
+      const key = e.target.dataset.key;
+      if (!key) return;
+      const old = state[key];
+      state[key] = Number(e.target.value);
+      appliedLater(key, old);
+    });
+    // Steppers: left / right on the D-pad (components.js sends dp-step), or the − / + buttons.
+    host.addEventListener("dp-step", (e) => step(e.target.closest("[data-dp-stepper]"), e.detail));
+    host.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-step]");
+      if (btn) step(btn.closest("[data-dp-stepper]"), Number(btn.dataset.step));
     });
     host.addEventListener("dp-back", back);
 

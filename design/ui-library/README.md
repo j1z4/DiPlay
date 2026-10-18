@@ -45,6 +45,27 @@ All are loaded from jsDelivr at pinned versions, and each one is optional: witho
 
 URL switches: `?libs=off` turns every library off; `?embed=1` shows only the walkthrough frame (used by the live pair on **Before & after**).
 
+## Settings catalog
+
+`settings/catalog.json` lists every user-visible setting of the app: 10 categories, 197 rows and 135 settings, including all of Advanced, the ambient-light dialog and the dashboard-map card. It records labels, options, defaults, reconnect behaviour (`next`, `now` or `confirm`), and which rows depend on which (`when`). Rows that need specific hardware or access carry a `requires` caption, so every feature stays visible in the preview.
+
+It is the single source for both previews:
+
+```sh
+python3 design/ui-library/settings/build_catalog.py   # validates, then writes the two copies
+```
+
+This writes `settings/catalog.js` for the web walkthrough and `mobile/src/debug/assets/openplay_settings.json` for the Android preview.
+
+## Android preview
+
+A Compose port of this library lives in `mobile/src/debug/java/com/shilapi/xcertplay/openplay/`. It has the same tokens, components, splash and loading screen, Home and settings catalog. It ships only in debug builds, under its own launcher icon, "OpenPlay preview". It keeps its own preferences and does not touch the shipping UI or real settings.
+
+```sh
+./gradlew :mobile:installDebug
+adb shell am start -n com.shihab.diplay.hudtest/com.shilapi.xcertplay.openplay.OpenPlayPreviewActivity
+```
+
 ## Before & after
 
 The **Before & after** page compares screenshots of the previous version (`compare/before-*.png`) with this one (`compare/after-*.png`), and runs both live side by side (`?libs=off` on the left). `compare/original-app-settings.png` is the original app's in-CarPlay menu, from `docs/screenshots/`.
