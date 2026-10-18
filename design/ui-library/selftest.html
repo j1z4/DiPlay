@@ -102,7 +102,7 @@ document.getElementById("f").addEventListener("load", async () => {
     const frame = d.getElementById("proto").getBoundingClientRect();
     const corner = line?.getBoundingClientRect();
     const bottomLeft = !!corner && corner.left - frame.left < frame.width * 0.1 && frame.bottom - corner.bottom < frame.height * 0.12;
-    log(!!loading?.querySelector(".dp-splash.is-loading") && line?.dataset.tone === "connecting" && bottomLeft, `Connect turns the splash into the loading screen, status bottom-left (${line?.dataset.tone}: ${line?.textContent.trim()})`);
+    log(!!loading?.querySelector(".dp-splash.is-loading") && !loading.querySelector(".dp-wordmark") && line?.dataset.tone === "connecting" && bottomLeft, `Connect turns the splash into the icon-only loading screen, status bottom-left (${line?.dataset.tone}: ${line?.textContent.trim()})`);
     await key("Escape");
     await wait(1200);
     log(screen().includes("scr-home") && !d.querySelector("#proto .scr-connecting"), `Esc on the loading screen glides back to Home (${screen()})`);

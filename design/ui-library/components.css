@@ -814,7 +814,7 @@ body > .dp-toast-stack { position: fixed; }
 }
 .dp-statusline[data-tone="waiting"] .dp-dot { animation: dp-breathe 2.4s var(--dp-ease-in-out) infinite; box-shadow: none; }
 .dp-statusline[data-tone="connecting"] .dp-dot { animation: dp-pulse 1.2s var(--dp-ease-out) infinite; }
-.dp-statusline__text.is-changing { animation: dp-value-swap var(--dp-dur-base) var(--dp-ease-out); }
+/* Text changes crossfade (setStatus in prototype.js); nothing slides. */
 
 /* ---------- Splash as a loading screen ---------- */
 

@@ -259,18 +259,45 @@
 
   /* ---------- Brand stage: splash and loading screen ---------- */
 
-  function brandStage(s, { filled, tone, text, loading }) {
-    const hint = s.connectionMode === "USB" ? "Keep the cable plugged in and the iPhone unlocked." : `Keep ${esc(s.iphone)} unlocked and nearby.`;
-    return `
-      <div class="scr-brand">
-        <div class="dp-splash${loading ? " is-loading" : ""}" data-dp-splash="${filled ? "filled" : ""}">
+  // The splash shows the wordmark; the loading screen is the animated mark alone.
+  const wordmarkAfter = () => `
           <div class="dp-splash__after dp-wordmark">
             <div class="dp-wordmark__lockup">
               <div class="dp-wordmark__name">OpenPlay</div>
               <div class="dp-wordmark__fork">(a fork of DiPlay)</div>
             </div>
             <div class="dp-wordmark__tagline">CarPlay, that you own.</div>
-          </div>
+          </div>`;
+
+  // Boot turning into loading: the wordmark fades out, then the mark glides to the centre.
+  function dropWordmark(splash) {
+    const after = splash.querySelector(".dp-splash__after");
+    if (!after) return;
+    const svg = splash.querySelector(".dp-splash__svg");
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const settle = () => {
+      const before = svg.getBoundingClientRect();
+      after.remove();
+      const now = svg.getBoundingClientRect();
+      if (reduce) return;
+      // Rects are in screen pixels; the head-unit frame is scaled.
+      const screen = splash.closest(".hu__screen");
+      const k = screen ? screen.getBoundingClientRect().width / screen.offsetWidth : 1;
+      svg.animate([{ transform: `translateY(${(before.top - now.top) / (k || 1)}px)` }, { transform: "none" }], {
+        duration: 650,
+        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+      });
+    };
+    if (reduce) return settle();
+    after.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "ease-out", fill: "forwards" }).finished.then(settle, settle);
+  }
+
+  function brandStage(s, { filled, tone, text, loading }) {
+    const hint = s.connectionMode === "USB" ? "Keep the cable plugged in and the iPhone unlocked." : `Keep ${esc(s.iphone)} unlocked and nearby.`;
+    return `
+      <div class="scr-brand">
+        <div class="dp-splash${loading ? " is-loading" : ""}" data-dp-splash="${filled ? "filled" : ""}">
+          ${loading ? "" : wordmarkAfter()}
         </div>
       </div>
       <div class="scr-corner">
@@ -282,15 +309,28 @@
       </div>`;
   }
 
+  // The status text crossfades to the next message: out 160ms, swap, in 240ms. A newer
+  // call cancels the running fade, and the latest text always wins.
   function setStatus(el, tone, text) {
     const line = el.querySelector(".dp-statusline");
     const label = line.querySelector(".dp-statusline__text");
     line.dataset.tone = tone;
-    if (label.textContent === text) return;
-    label.textContent = text;
-    label.classList.remove("is-changing");
-    void label.offsetWidth;
-    label.classList.add("is-changing");
+    label.dataset.next = text;
+    if (label.textContent === text && !label.getAnimations().length) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      label.textContent = text;
+      return;
+    }
+    label.getAnimations().forEach((a) => a.cancel());
+    const out = label.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: "ease-in", fill: "forwards" });
+    out.finished.then(
+      () => {
+        label.textContent = label.dataset.next;
+        out.cancel();
+        label.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, easing: "ease-out" });
+      },
+      () => {}, // cancelled by a newer message
+    );
   }
 
   // Runs the connection on a brand stage: stages tick through the corner status while the
@@ -300,6 +340,7 @@
     ctx.state.failed = false;
     const splash = el.querySelector(".dp-splash");
     splash.classList.add("is-loading");
+    dropWordmark(splash);
     el.querySelectorAll(".scr-corner[hidden], .scr-corner__hint[hidden]").forEach((c) => c.removeAttribute("hidden"));
     const cancel = el.querySelector('[data-act="cancel-connect"]');
     if (DP.focus.scope === el) DP.focus.set(cancel);
@@ -652,7 +693,14 @@
       for (const [a, b] of pairs) {
         const src = from.querySelector(a);
         const dst = to.querySelector(b);
-        if (!src || !dst) continue;
+        if (!dst) continue;
+        if (!src) {
+          // Coming from the icon-only loading screen: the wordmark has no twin, so it fades in.
+          dst.animate([{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }], {
+            duration: 600, delay: 250, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "backwards",
+          });
+          continue;
+        }
         const r1 = src.getBoundingClientRect();
         const r2 = dst.getBoundingClientRect();
         const dx = (r1.left + r1.width / 2 - (r2.left + r2.width / 2)) / k;
@@ -695,14 +743,17 @@
     function morphHomeGsap(from) {
       const gsap = DP.libs.gsap;
       const Flip = window.Flip;
-      const text = [".dp-wordmark__name", ".dp-wordmark__fork", ".dp-wordmark__tagline"];
+      const all = [".dp-wordmark__name", ".dp-wordmark__fork", ".dp-wordmark__tagline"];
+      // The boot splash carries the wordmark; the icon-only loading screen does not.
+      const text = all.filter((sel) => from.querySelector(sel));
       text.forEach((sel, i) => (from.querySelector(sel).dataset.flipId = `wm-${i}`));
-      const flipState = Flip.getState(from.querySelectorAll("[data-flip-id]"));
+      const flipState = text.length ? Flip.getState(from.querySelectorAll("[data-flip-id]")) : null;
       const markFrom = from.querySelector(".dp-splash__fill").getBoundingClientRect();
 
       render("home", {}, { keep: from, enter: false, vt: false });
       const to = current;
       text.forEach((sel, i) => (to.querySelector(sel).dataset.flipId = `wm-${i}`));
+      const fadeIn = all.filter((sel) => !text.includes(sel)).map((sel) => to.querySelector(sel));
       const mark = to.querySelector(".dp-wordmark__mark");
       const markTo = mark.getBoundingClientRect();
       const k = host.getBoundingClientRect().width / host.offsetWidth || 1;
@@ -714,7 +765,8 @@
           gsap.set([mark, ...to.querySelectorAll("[data-flip-id]")], { clearProps: "transform,filter" });
         },
       });
-      tl.add(Flip.from(flipState, { targets: to.querySelectorAll("[data-flip-id]"), duration: 0.9, ease: "expo.out", scale: true }), 0);
+      if (flipState) tl.add(Flip.from(flipState, { targets: to.querySelectorAll("[data-flip-id]"), duration: 0.9, ease: "expo.out", scale: true }), 0);
+      if (fadeIn.length) tl.from(fadeIn, { opacity: 0, y: 14, duration: 0.6, stagger: 0.06, ease: "expo.out" }, 0.25);
       tl.fromTo(
         mark,
         {
@@ -736,20 +788,21 @@
     // The screen being left: its shared parts hide at once (their twins are flying), the
     // rest fades out over 300ms instead of vanishing, then it is removed.
     const SHARED = ".dp-splash__svg, .dp-wordmark__mark, .dp-wordmark__lockup > *, .dp-wordmark__tagline";
-    function retire(el) {
+    // `shared` names only the parts that have a twin on the next screen; anything without
+    // one (Home's wordmark when going to the icon-only loading screen) fades with the rest.
+    function retire(el, shared = SHARED) {
       el.classList.add("is-retiring");
       delete el.dataset.dpFocusScope;
-      el.querySelectorAll(SHARED).forEach((s) => (s.style.visibility = "hidden"));
+      el.querySelectorAll(shared).forEach((s) => (s.style.visibility = "hidden"));
       const done = () => el.remove();
       if (matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
       el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "ease-out", fill: "forwards" }).finished.then(done, done);
     }
 
     /*
-     * Home -> loading screen: the reverse of the splash morph. The wordmark on the loading
-     * screen starts where it sits on Home and glides to the centre; the mark grows from its
-     * Home size. The device card and button fade with Home. Needs GSAP (Flip); without it
-     * the loading screen just slides in.
+     * Home -> loading screen. The loading screen is the mark alone, so only the mark moves:
+     * it grows from its Home size to the centre. Home's wordmark, device card and button
+     * fade out with Home. Needs GSAP; without it the loading screen just slides in.
      */
     function morphToLoading(params) {
       const from = current;
@@ -759,28 +812,22 @@
       if (reduce || !DP.libs.gsap || !from?.matches(".scr-home")) return render("connecting", params);
 
       const gsap = DP.libs.gsap;
-      const Flip = window.Flip;
-      const text = [".dp-wordmark__name", ".dp-wordmark__fork", ".dp-wordmark__tagline"];
-      text.forEach((sel, i) => (from.querySelector(sel).dataset.flipId = `wm-${i}`));
-      const flipState = Flip.getState(from.querySelectorAll("[data-flip-id]"));
       const markFrom = from.querySelector(".dp-wordmark__mark").getBoundingClientRect();
 
       render("connecting", params, { keep: from, enter: false, vt: false });
       const to = current;
-      text.forEach((sel, i) => (to.querySelector(sel).dataset.flipId = `wm-${i}`));
       const svg = to.querySelector(".dp-splash__svg");
       // The splash SVG is padded evenly round the mark, so its centre is the mark's centre.
       const markTo = to.querySelector(".dp-splash__fill").getBoundingClientRect();
       const k = host.getBoundingClientRect().width / host.offsetWidth || 1;
-      retire(from);
+      retire(from, ".dp-wordmark__mark");
 
       const tl = gsap.timeline({
         onComplete: () => {
           to.classList.remove("is-morphing");
-          gsap.set([svg, ...to.querySelectorAll("[data-flip-id]")], { clearProps: "transform" });
+          gsap.set(svg, { clearProps: "transform" });
         },
       });
-      tl.add(Flip.from(flipState, { targets: to.querySelectorAll("[data-flip-id]"), duration: 0.85, ease: "expo.out", scale: true }), 0);
       tl.fromTo(
         svg,
         {
