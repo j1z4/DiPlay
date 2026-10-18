@@ -227,10 +227,12 @@ private fun Wordmark(t: SharedTransitionScope, v: AnimatedVisibilityScope, nameS
 private fun SplashScreen(state: AppState, t: SharedTransitionScope, v: AnimatedVisibilityScope) {
     var status by remember { mutableStateOf("Starting OpenPlay…") }
     var showWordmark by remember { mutableStateOf(false) }
+    // The splash is the branded moment: the wordmark rises as the fill settles (1.4 s) and
+    // holds, fully visible, for 2 s before the screen becomes the icon-only loading screen.
     LaunchedEffect(Unit) {
-        delay(1900)
+        delay(1400)
         showWordmark = true
-        delay(700)
+        delay(2000)
         if (state.settings.bool("connectOnOpen") && !state.connected) {
             state.screen = Screen.Loading
         } else {

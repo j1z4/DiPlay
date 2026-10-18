@@ -404,7 +404,7 @@
       .fromTo(glow, { drawSVG: "0% 0%" }, { drawSVG: "0% 100%", duration: 1.6, ease: "power2.inOut" }, 0.08)
       .fromTo(fill, { opacity: 0, scale: 0.96, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.8, ease: "expo.out" }, 1.25)
       .to([trace, glow], { opacity: 0, duration: 0.8, ease: "power1.in" }, 1.8);
-    if (after.length) tl.fromTo(after, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.7, ease: "expo.out" }, 1.9);
+    if (after.length) tl.fromTo(after, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.7, ease: "expo.out" }, 1.4);
     el._dpTimeline = tl;
     return tl;
   }

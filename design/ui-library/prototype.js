@@ -318,7 +318,7 @@
           if (ctx.state.connectOnOpen && !ctx.state.connected) return startLoading(el, ctx, {});
           setStatus(el, "waiting", "Ready to connect");
           ctx.later(() => ctx.morphHome(), 600);
-        }, 2600);
+        }, 3400); // the wordmark rises at 1.4 s and holds for 2 s before loading takes over
       },
     },
 

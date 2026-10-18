@@ -96,7 +96,7 @@
 }
 .dp-splash.is-playing .dp-splash__fill { animation: dp-trace-fill 0.8s var(--dp-ease-out) 1.25s forwards; }
 .dp-splash__after { opacity: 0; }
-.dp-splash.is-playing .dp-splash__after { animation: dp-splash-rise 0.7s var(--dp-ease-out) 1.9s forwards; }
+.dp-splash.is-playing .dp-splash__after { animation: dp-splash-rise 0.7s var(--dp-ease-out) 1.4s forwards; }
 @keyframes dp-splash-rise {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }
