@@ -43,14 +43,16 @@
   gap: var(--dp-space-3);
   text-align: center;
 }
+/* Wordmark as set in the Figma frame: bold, near-default tracking, white tagline. */
 .dp-wordmark__name {
   font: var(--dp-text-display);
-  letter-spacing: var(--dp-tracking-display);
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--dp-text);
 }
 .dp-wordmark__tagline {
-  font: 600 clamp(18px, 2vw, 26px) / 1.2 var(--dp-font);
-  letter-spacing: var(--dp-tracking-tight);
+  font: 700 clamp(18px, 2vw, 26px) / 1.2 var(--dp-font);
+  letter-spacing: 0;
   color: var(--dp-text);
 }
 
@@ -311,8 +313,9 @@
 .dp-card__item.is-focused::before,
 .dp-card__item:focus-visible + .dp-card__item::before,
 .dp-card__item.is-focused + .dp-card__item::before { opacity: 0; }
-.dp-card__label { font: 500 17px / 1.2 var(--dp-font); color: var(--dp-text-label); transition: color var(--dp-dur-fast); }
-.dp-card__value { font: 600 26px / 1.2 var(--dp-font); letter-spacing: var(--dp-tracking-tight); color: var(--dp-text); transition: color var(--dp-dur-fast); }
+/* Label and value share a size, as in the Figma frame: lavender label, white value. */
+.dp-card__label { font: 500 22px / 1.2 var(--dp-font); color: var(--dp-text-label); transition: color var(--dp-dur-fast); }
+.dp-card__value { font: 500 24px / 1.25 var(--dp-font); color: var(--dp-text); transition: color var(--dp-dur-fast); }
 .dp-card__value .dp-status { margin-inline-start: var(--dp-space-2); vertical-align: middle; }
 
 /* The Figma "Settings >" row: a single slate row under the card. */

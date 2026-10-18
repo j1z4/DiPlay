@@ -27,7 +27,7 @@
   ];
 
   const PICKERS = {
-    iphone: { title: "Choose iPhone", icon: "connection", note: "DiPlay connects to this iPhone when it is nearby.", options: ["My iPhone", "Work iPhone"] },
+    iphone: { title: "Choose iPhone", icon: "connection", note: "DiPlay connects to this iPhone when it is nearby.", options: ["Device Name", "Work iPhone"] },
     connectionMode: { title: "Default connection mode", icon: "connection", note: "Wireless joins the car hotspot. USB uses the cable and charges the iPhone.", options: ["Wi-Fi", "USB"], reconnect: true },
     charging: { title: "iPhone charging", icon: "connection", note: "Lower current keeps older head units stable.", options: ["Normal 2.4 A", "Reduced 1.5 A", "Low 0.5 A"], reconnect: true },
     nightMode: { title: "CarPlay night mode", icon: "night", note: "System follows the car's headlights signal.", options: ["System", "Ambient light", "Day", "Night", "Schedule"] },
@@ -39,7 +39,7 @@
   };
 
   const DEFAULTS = {
-    iphone: "My iPhone",
+    iphone: "Device Name",
     connectionMode: "Wi-Fi",
     charging: "Normal 2.4 A",
     nightMode: "System",
