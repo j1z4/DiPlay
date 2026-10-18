@@ -97,6 +97,8 @@ class AirPlaySession(
     private var eventCipher: ControlCipher? = null
     private var eventCseq = 0
     private var pendingNightMode: Boolean? = null
+    private var pendingMediaIndex: Int? = null
+    private var mediaButtonDownSent = false
     private val firstTouchSendLogged = AtomicBoolean(false)
     private val touchSendFailureLogged = AtomicBoolean(false)
     private val ntp = NtpClock()
@@ -362,8 +364,11 @@ class AirPlaySession(
         sendHidReport(AirPlayHid.KNOB_HID_UID, AirPlayHid.knobReport(AirPlayKnobState(select = down)))
 
     fun sendMedia(index: Int) {
-        sendHidReport(AirPlayHid.MEDIA_HID_UID, AirPlayHid.mediaReport(index))
-        sendHidReport(AirPlayHid.MEDIA_HID_UID, AirPlayHid.mediaReport(0))
+        synchronized(eventWriteLock) {
+            // The event channel often is not up for the first presses. Keep the latest press and
+            // send it once the channel exists, instead of dropping it.
+            if (!sendMediaLocked(index)) pendingMediaIndex = index else pendingMediaIndex = null
+        }
     }
 
     fun sendTelephony(index: Int) {
@@ -423,6 +428,28 @@ class AirPlaySession(
         )
         if (sent) pendingNightMode = null
         return sent
+    }
+
+    /** Caller holds [eventWriteLock]. Press and release stay paired if the channel is not ready yet. */
+    private fun sendMediaLocked(index: Int): Boolean {
+        if (!mediaButtonDownSent) {
+            if (!sendCommandLocked(mediaCommand(index))) return false
+            mediaButtonDownSent = true
+        }
+        if (!sendCommandLocked(mediaCommand(0))) return false
+        mediaButtonDownSent = false
+        return true
+    }
+
+    private fun mediaCommand(index: Int): Map<String, Any?> = linkedMapOf(
+        "type" to "hidSendReport",
+        "uuid" to AirPlayHid.MEDIA_HID_UID.toString(16),
+        "hidReport" to AirPlayHid.mediaReport(index),
+    )
+
+    private fun sendPendingMediaLocked() {
+        val index = pendingMediaIndex ?: return
+        if (sendMediaLocked(index)) pendingMediaIndex = null
     }
 
     private fun sendHidReport(uid: Int, report: ByteArray): Boolean =
@@ -848,6 +875,8 @@ class AirPlaySession(
         safeClose(eventSocket)
         eventSocket = null
         eventCipher = null
+        pendingMediaIndex = null
+        mediaButtonDownSent = false
         eventThreads.forEach { it.interrupt() }
         eventThreads.clear()
     }
@@ -883,6 +912,7 @@ class AirPlaySession(
             eventCipher = ControlCipher(readKey, writeKey)
             synchronized(eventWriteLock) {
                 sendPendingNightModeLocked()
+                sendPendingMediaLocked()
             }
             val videoDelivery = videoPlaybackAvailability.setEventReady(true)
             debugLog("airplay video event ready availability=$videoDelivery")

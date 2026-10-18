@@ -11,8 +11,6 @@ import java.io.Closeable
 import java.nio.ByteBuffer
 import java.util.ArrayDeque
 import java.util.concurrent.TimeoutException
-import java.util.concurrent.atomic.AtomicBoolean
-
 /**
  * A blocking NCM data pipe that moves Ethernet frames as NTB16 blocks over bulk endpoints.
  *
@@ -55,20 +53,20 @@ class NcmUsbBridge internal constructor(
     // Bulk IN uses one persistent async request: bulkTransfer() pins its byte[] in a JNI critical
     // section for the whole wait, which blocks ART's GC thread flip and, with it, every other USB
     // transfer (seen as ~0.8 s stalls of video and audio). A timed-out request stays queued, so no
-    // data is lost between calls. This is the only requestWait() user on this connection.
+    // data is lost between calls. The NCM status interrupt used to poll with bulkTransfer on this
+    // same connection; mixing that with requestWait crashes or stalls Android 13 USB hosts. Status
+    // is now a second UsbRequest drained only by this requestWait loop.
     private val directReadBuffer = ByteBuffer.allocateDirect(READ_CHUNK_BYTES)
     private var readRequest: UsbRequest? = null
     private var readQueued = false
     private val readQueuePolicy = UsbReadQueuePolicy.forCurrentPlatform()
     private val readRequests = UsbRequestQueue(connection, "ncm-read-reaper")
     private val traffic = NcmTrafficCounter()
-    private val statusRunning = AtomicBoolean(statusEndpoint != null)
-    private val statusThread = statusEndpoint?.let { endpoint ->
-        Thread({ drainStatus(endpoint) }, "ncm-status-in").apply {
-            isDaemon = true
-            start()
-        }
-    }
+    private var statusRequest: UsbRequest? = null
+    private val statusBuffer = statusEndpoint?.let { ByteBuffer.allocateDirect(it.maxPacketSize.coerceAtLeast(64)) }
+    private var statusQueued = false
+    private var loggedStatus = false
+    private var loggedQueueDrop = false
 
     /** Wraps one Ethernet frame in one NTB16 block and writes it to bulk OUT. */
     fun send(frame: ByteArray, timeoutMillis: Int) = synchronized(writeLock) {
@@ -144,22 +142,14 @@ class NcmUsbBridge internal constructor(
     }
 
     override fun close() {
-        statusRunning.set(false)
-        val requestToClose = synchronized(stateLock) {
+        val (requestToClose, statusToClose) = synchronized(stateLock) {
             if (closed) return
             closed = true
-            readRequest
+            readRequest to statusRequest
         }
         // Wakes a reader blocked in requestWait(); it then observes the closed state.
         runCatching { requestToClose?.cancel() }
-        statusThread?.let { thread ->
-            thread.interrupt()
-            try {
-                thread.join(STATUS_POLL_TIMEOUT_MILLIS + 250L)
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-            }
-        }
+        runCatching { statusToClose?.cancel() }
         for (usbInterface in claimedInterfaces.asReversed()) {
             try {
                 connection.releaseInterface(usbInterface)
@@ -170,35 +160,7 @@ class NcmUsbBridge internal constructor(
         readRequests.close()
         connection.close()
         runCatching { requestToClose?.close() }
-    }
-
-    private fun drainStatus(endpoint: UsbEndpoint) {
-        val buffer = ByteArray(endpoint.maxPacketSize.coerceAtLeast(64))
-        var loggedFirst = false
-        while (statusRunning.get()) {
-            // Short synchronous polls keep this thread out of JNI critical sections most of the time;
-            // notifications are rare, small interrupt packets that are only logged.
-            val transferred = try {
-                connection.bulkTransfer(endpoint, buffer, buffer.size, STATUS_POLL_TIMEOUT_MILLIS)
-            } catch (_: RuntimeException) {
-                return
-            }
-            if (transferred <= 0) {
-                try {
-                    Thread.sleep(STATUS_POLL_INTERVAL_MILLIS)
-                } catch (_: InterruptedException) {
-                    return
-                }
-                continue
-            }
-            if (!loggedFirst) {
-                loggedFirst = true
-                Log.i(
-                    IphoneCarPlayConfiguration.TAG,
-                    "ncm status notification bytes=$transferred data=${buffer.copyOf(transferred).hex(32)}",
-                )
-            }
-        }
+        runCatching { statusToClose?.close() }
     }
 
     private fun ByteArray.hex(limit: Int): String =
@@ -298,8 +260,18 @@ class NcmUsbBridge internal constructor(
     }
 
     private fun enqueueFrame(frame: ByteArray) {
-        if (frames.size >= MAX_QUEUED_FRAMES || queuedBytes + frame.size > MAX_QUEUED_BYTES) {
-            throw failSession("NCM frame queue exceeded its bounds")
+        if (frame.size > MAX_QUEUED_BYTES) throw failSession("NCM frame exceeds the queue bound")
+        // A full queue used to tear the USB session down. On a 2 GB head unit the tun side falls
+        // behind at startup; dropping the oldest frames lets TCP retransmit instead of crashing.
+        while (frames.isNotEmpty() &&
+            (frames.size >= MAX_QUEUED_FRAMES || queuedBytes + frame.size > MAX_QUEUED_BYTES)
+        ) {
+            val dropped = frames.removeFirst()
+            queuedBytes -= dropped.size
+            if (!loggedQueueDrop) {
+                loggedQueueDrop = true
+                Log.w(IphoneCarPlayConfiguration.TAG, "NCM frame queue full; dropping oldest frames")
+            }
         }
         frames.addLast(frame)
         queuedBytes += frame.size
@@ -337,6 +309,7 @@ class NcmUsbBridge internal constructor(
                     readQueued = true
                     if (queued.fallbackBytes != null) acceptedFallback = queued
                 }
+                queueStatusLocked()
                 current
             }
         } catch (error: RuntimeException) {
@@ -352,15 +325,29 @@ class NcmUsbBridge internal constructor(
                 )
             }
         }
+        val deadline = System.nanoTime() + timeoutMillis * NANOS_PER_MILLISECOND
         try {
-            val completed = try {
-                readRequests.await(timeoutMillis.coerceAtLeast(1))
-            } catch (_: TimeoutException) {
-                // Nothing arrived yet; the request stays queued for the next call. USBMUX owns
-                // authoritative detach/failure detection for the same phone.
-                return null
-            } ?: throw failSession("Android returned no NCM read request")
-            if (completed !== request) throw failSession("Android completed an unexpected NCM request")
+            while (true) {
+                val remainingMillis = (deadline - System.nanoTime()) / NANOS_PER_MILLISECOND
+                if (remainingMillis <= 0) return null
+                val completed = try {
+                    readRequests.await(remainingMillis.coerceAtLeast(1))
+                } catch (_: TimeoutException) {
+                    // Nothing arrived yet; the request stays queued for the next call. USBMUX owns
+                    // authoritative detach/failure detection for the same phone.
+                    return null
+                } ?: throw failSession("Android returned no NCM read request")
+                if (completed === statusRequest) {
+                    synchronized(stateLock) {
+                        checkOpenLocked()
+                        finishStatusLocked()
+                        queueStatusLocked()
+                    }
+                    continue
+                }
+                if (completed !== request) throw failSession("Android completed an unexpected NCM request")
+                break
+            }
             readQueued = false
             val transferred = directReadBuffer.position()
             if (transferred <= 0) return null
@@ -372,6 +359,40 @@ class NcmUsbBridge internal constructor(
         } catch (error: RuntimeException) {
             throw failSession("NCM read failed", error)
         }
+    }
+
+    /** Caller holds [stateLock]. Status is optional; a missing interrupt endpoint is ignored. */
+    private fun queueStatusLocked() {
+        val endpoint = statusEndpoint ?: return
+        val buffer = statusBuffer ?: return
+        val current = statusRequest ?: UsbRequest().also { created ->
+            if (!created.initialize(connection, endpoint)) {
+                created.close()
+                Log.w(IphoneCarPlayConfiguration.TAG, "NCM status request was not initialized")
+                return
+            }
+            statusRequest = created
+        }
+        if (statusQueued) return
+        buffer.clear()
+        // Same queue as bulk IN, so Android 7's single requestWait reaper sees both.
+        statusQueued = readRequests.queue(current, buffer)
+    }
+
+    /** Caller holds [stateLock]. */
+    private fun finishStatusLocked() {
+        statusQueued = false
+        val buffer = statusBuffer ?: return
+        val transferred = buffer.position()
+        if (transferred <= 0 || loggedStatus) return
+        loggedStatus = true
+        buffer.flip()
+        val bytes = ByteArray(transferred)
+        buffer.get(bytes)
+        Log.i(
+            IphoneCarPlayConfiguration.TAG,
+            "ncm status notification bytes=$transferred data=${bytes.hex(32)}",
+        )
     }
 
     private fun failSession(message: String, cause: Throwable? = null): IphoneUsbException.DeviceUnavailable {
@@ -409,8 +430,6 @@ class NcmUsbBridge internal constructor(
         private const val LOGGED_RESYNCS = 5
         internal const val USB_SETUP_ATTEMPTS = 5
         private const val USB_SETUP_RETRY_MILLIS = 100L
-        private const val STATUS_POLL_TIMEOUT_MILLIS = 20
-        private const val STATUS_POLL_INTERVAL_MILLIS = 500L
         internal const val NOT_READY_WRITE_TIMEOUT_MILLIS = 20
         private const val MAX_QUEUED_FRAMES = 256
         private const val MAX_QUEUED_BYTES = 1 shl 20

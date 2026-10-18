@@ -1806,6 +1806,7 @@ private class AudioRenderer(
     /** Called when this call's track is routed to the earpiece; the sink moves the call to the loudspeaker. */
     @Volatile var onRoutedToEarpiece: (() -> Unit)? = null
     private var routingListener: AudioRouting.OnRoutingChangedListener? = null
+    private var firstPlaybackNs = 0L
     private var lastPcmWriteNs = 0L
     private var rebufferCount = 0
     private var rebufferPauseReportCount = 0
@@ -2444,9 +2445,17 @@ private class AudioRenderer(
 
     private fun startPlayback(track: AudioTrack) {
         diagnosticStage = "track-play"
-        underrunsAtPlaybackStart = track.underrunCount
-        track.play()
+        try {
+            underrunsAtPlaybackStart = track.underrunCount
+            track.play()
+        } catch (error: IllegalStateException) {
+            // Some Android 13 HALs reject play() until the next buffer. Leave the worker alive.
+            Log.w(TAG, "audio track play failed; will retry", error)
+            playbackStarted = false
+            return
+        }
         playbackStarted = true
+        if (firstPlaybackNs == 0L) firstPlaybackNs = System.nanoTime()
         reportNavigationPlayback(track)
         if (rebufferCount > 0 && rebufferRecoverReportCount < MAX_REBUFFER_REPORTS) {
             rebufferRecoverReportCount++
@@ -2490,7 +2499,11 @@ private class AudioRenderer(
 
     private fun maintainPlaybackBuffer() {
         val track = track ?: return
-        if (bufferProgress.shouldRebuffer(mappedChannel == AudioChannel.MEDIA, playbackStarted,
+        // The first seconds of a wired session often underrun while USB settles. Rebuffering
+        // then pauses the track until the start threshold fills, which is the stutter that
+        // later catches up. Steady-state gaps still use the normal recovery floor.
+        val inStartup = firstPlaybackNs != 0L && System.nanoTime() - firstPlaybackNs < STARTUP_REBUFFER_GRACE_NS
+        if (!inStartup && bufferProgress.shouldRebuffer(mappedChannel == AudioChannel.MEDIA, playbackStarted,
                 track.underrunCount > underrunsAtPlaybackStart, queue.isEmpty(), track.playbackHeadPosition,
                 startThresholdBytes / 2L)) {
             // The hardware buffer has starved below the recovery floor. Pause without flushing
@@ -2653,6 +2666,9 @@ private class AudioRenderer(
         const val AUDIO_INPUT_WAIT_NS = 100_000_000L
         const val AUDIO_POLL_MILLIS = 10L
         const val BUFFER_TAIL_WAIT_NS = 500_000_000L
+        // Wired USB stalls for several hundred ms at session start. Rebuffering then pauses the
+        // track and waits for a full start threshold, which is the stutter-then-catch-up.
+        const val STARTUP_REBUFFER_GRACE_NS = 5_000_000_000L
         // Holds a burst after a Wi-Fi gap (~4 s of AAC) instead of dropping it.
         const val MAX_QUEUED_PACKETS = 192
         const val PREBUFFER_WRITE_CHUNK_BYTES = 2 * 1024

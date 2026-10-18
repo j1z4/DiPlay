@@ -1137,6 +1137,7 @@ class CarPlayHostActivity : ComponentActivity() {
         WheelKeyService.restoreIfNeeded(this)
         hostAppearanceResumed = true
         updateCallPopupGuard()
+        CarPlayMediaKeys.setHostInForeground(true)
         val savedNightMode = AirPlayPersistence.loadCarPlayNightMode(this)
         val savedThreshold = AirPlayPersistence.loadAmbientLightThreshold(this)
         val savedDelay = AirPlayPersistence.loadAmbientDelaySeconds(this)
@@ -1763,6 +1764,7 @@ class CarPlayHostActivity : ComponentActivity() {
         hostAppearanceResumed = false
         updateCallPopupGuard()
         AppAppearanceRuntime.clearHost(this)
+        CarPlayMediaKeys.setHostInForeground(false)
         nightModeController.pause()
         super.onPause()
     }

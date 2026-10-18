@@ -64,6 +64,7 @@ internal object CarPlayMediaKeys {
     /** Some car firmware never sends a gain callback after the phone call ends. */
     private var transientFocusInterrupted = false
     private var appContext: Context? = null
+    private var hostInForeground = true
     private var mediaAudioActive = false
     private var nowPlaying = CarPlayNowPlaying()
     private var elapsedUpdatedAt = 0L
@@ -90,6 +91,25 @@ internal object CarPlayMediaKeys {
         val retained = next.nowPlayingSnapshot()
         onNowPlayingChanged(next)
         next.matchingArtworkSnapshot(retained.artworkTransferId)?.let { onArtworkChanged(next, it.id, it.bytes) }
+        // Own the media session before the first audio packet. Otherwise the head unit's
+        // Bluetooth player still has the play key and starts A2DP, which pauses CarPlay.
+        val host = appContext
+        mainHandler.post {
+            synchronized(this) {
+                if (controller === next && session == null && host != null) start(host)
+            }
+        }
+    }
+
+    /** False while the activity is paused, so a background DiPlay does not take the car's audio back. */
+    fun setHostInForeground(visible: Boolean) {
+        mainHandler.post {
+            synchronized(this) {
+                hostInForeground = visible
+                if (!visible) mainHandler.removeCallbacks(reclaimFocus)
+                else if (!focusHeld && session != null && !mediaAudioActive) regainFocusLocked()
+            }
+        }
     }
 
     /** Ends key handling for [expected]; a newer controller's state is left alone. */
@@ -343,6 +363,12 @@ internal object CarPlayMediaKeys {
                     AudioManager.AUDIOFOCUS_LOSS -> {
                         focusHeld = false
                         transientFocusInterrupted = false
+                        // Before music starts, the factory Bluetooth player often takes focus as the
+                        // phone joins. Take it back once while DiPlay is on screen.
+                        if (hostInForeground && !mediaAudioActive) {
+                            mainHandler.removeCallbacks(reclaimFocus)
+                            mainHandler.postDelayed(reclaimFocus, FOCUS_RECLAIM_DELAY_MS)
+                        }
                     }
                     AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> transientFocusInterrupted = true
                     AudioManager.AUDIOFOCUS_GAIN -> {
@@ -385,6 +411,13 @@ internal object CarPlayMediaKeys {
         focusRequest = null
         focusHeld = false
         transientFocusInterrupted = false
+        mainHandler.removeCallbacks(reclaimFocus)
+    }
+
+    private val reclaimFocus = Runnable {
+        synchronized(this) {
+            if (hostInForeground && !mediaAudioActive && controller != null) regainFocusLocked()
+        }
     }
 
     private fun publishPlaybackStateLocked() {
@@ -534,6 +567,7 @@ internal object CarPlayMediaKeys {
     private const val MAX_ARTWORK_DIMENSION = 384
     private const val MAX_ARTWORK_SOURCE_DIMENSION = 8_192
     private const val MAX_CACHED_ARTWORK = 4
+    private const val FOCUS_RECLAIM_DELAY_MS = 500L
 }
 
 /**
