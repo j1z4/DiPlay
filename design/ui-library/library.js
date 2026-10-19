@@ -70,6 +70,7 @@
   DPPrototype.mount(heroHost, { interactive: false, start: location.hash.length > 1 ? "home" : "splash" });
 
   document.getElementById("logo-replay").addEventListener("click", () => DP.replaySplash(document.getElementById("logo-splash")));
+  document.getElementById("logo-carplay-replay").addEventListener("click", () => DP.replaySplash(document.getElementById("logo-carplay")));
   let walkthroughSeen = false;
 
   document.getElementById("proto-bar").addEventListener("click", (e) => {

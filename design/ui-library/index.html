@@ -203,6 +203,16 @@
         <span class="lib-hint">2.6 s in the browser · 1.0 s as an Android splash</span>
       </div>
 
+      <h2>Loading screen</h2>
+      <p>While CarPlay connects, the loading screen shows the CarPlay icon instead of the OpenPlay mark. It traces in the same way: the white outline draws the rounded square, then the "C" and the play triangle, the green fill blooms in and the outline lets go. Then a short light runs round the square until the session starts. <code>brand/carplay.svg</code>, from Wikimedia Commons; CarPlay and its icon belong to Apple Inc.</p>
+      <div class="lib-stage lib-stage--center" style="min-height:320px">
+        <div class="dp-splash is-loading" id="logo-carplay" data-dp-splash="carplay" style="width:200px"></div>
+      </div>
+      <div class="hu-bar">
+        <button class="hu-chip" id="logo-carplay-replay">Replay trace</button>
+        <span class="lib-hint">The light keeps running while connecting</span>
+      </div>
+
       <h2>Lottie</h2>
       <p>The same trace as a Lottie file, <code>brand/openplay-splash.json</code>, generated from the mark's path by <code>brand/build_lottie.py</code>. One file plays in the browser (lottie-web, below), in the app (lottie-android), and can be rendered to frames for <code>bootanimation.zip</code>. Left: GSAP and SVG. Right: the Lottie file.</p>
       <div class="lib-stage lib-stage--center" style="gap:64px;min-height:300px">

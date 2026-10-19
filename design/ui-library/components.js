@@ -370,6 +370,32 @@
   }
 
   /*
+   * The CarPlay icon (brand/carplay.svg, from Wikimedia Commons; CarPlay and its icon belong to
+   * Apple Inc.), for the loading screen. Same layers as the splash: the trace follows the
+   * rounded square, then the "C" and the play triangle; the orbit runs round the square.
+   */
+  const CP_SQUARE = "M157.668 125.402c0 17.838-14.459 32.297-32.296 32.297H44.886c-17.837 0-32.296-14.459-32.296-32.297V44.917c0-17.837 14.459-32.296 32.296-32.296h80.486c17.837 0 32.296 14.459 32.296 32.296v80.485z";
+  const CP_ARC = "M119.4 60.476c-7.672-10.563-20.121-17.431-34.175-17.431-23.312 0-42.21 18.898-42.21 42.21s18.898 42.21 42.21 42.21c14.028 0 26.458-6.843 34.132-17.373";
+  const CP_PLAY = "M77.088 66.12c-.384-.283-.824-.533-1.185-.533a1.66 1.66 0 0 0-1.659 1.659v35.421a1.66 1.66 0 0 0 2.534 1.407c.311-.196 30.316-17.307 30.607-17.561.35-.304.571-.752.571-1.252 0-.43-.163-.821-.431-1.116-.304-.333-29.936-17.656-30.437-18.025z";
+  const CP_GLYPH = "M85.225 129.963c-24.652 0-44.707-20.055-44.707-44.707s20.055-44.707 44.707-44.707c14.269 0 27.798 6.901 36.195 18.46a2.498 2.498 0 0 1-4.041 2.935C109.92 51.674 97.9 45.542 85.225 45.542c-21.898 0-39.713 17.815-39.713 39.713 0 21.897 17.815 39.713 39.713 39.713 12.649 0 24.654-6.11 32.117-16.347a2.497 2.497 0 0 1 4.034 2.941c-8.397 11.523-21.912 18.401-36.151 18.401z" + CP_PLAY;
+
+  function carplaySplash() {
+    const id = `dp-carplay-${++markId}`;
+    const traced = (cls, extra) => [CP_SQUARE, CP_ARC, CP_PLAY].map((d) => `<path class="${cls}" pathLength="1" ${extra} d="${d}"/>`).join("");
+    return `<svg class="dp-splash__svg dp-splash__svg--carplay" viewBox="-1.41 -1.379 173.078 173.078" aria-hidden="true">
+      <defs>
+        <linearGradient id="${id}-f" x1="85" y1="12.621" x2="85" y2="157.699" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#0BD319"/><stop offset="0.22" stop-color="#18D722"/><stop offset="1" stop-color="#86FC6F"/></linearGradient>
+        <linearGradient id="${id}-s" x1="85" y1="12.621" x2="85" y2="157.699" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#3DFF6E"/></linearGradient>
+        <filter id="${id}-b" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+      <g class="dp-splash__fill"><path fill="url(#${id}-f)" d="${CP_SQUARE}"/><path fill="#fff" d="${CP_GLYPH}"/></g>
+      ${traced("dp-splash__glow", `stroke="#3DFF6E" stroke-width="6" stroke-linejoin="round" filter="url(#${id}-b)"`)}
+      ${traced("dp-splash__trace", `stroke="url(#${id}-s)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"`)}
+      <path class="dp-splash__orbit" pathLength="1" stroke="#3DFF6E" stroke-width="7" stroke-linecap="round" filter="url(#${id}-b)" d="${CP_SQUARE}"/>
+      <path class="dp-splash__orbit" pathLength="1" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" d="${CP_SQUARE}"/></svg>`;
+  }
+
+  /*
    * Same 2.6 s timeline as brand/diplay-splash-trace.svg. With GSAP the glow trails the
    * stroke by 80 ms like light following a pen, and the fill settles on an expo curve.
    * Returns the GSAP timeline (or null when the CSS fallback runs).
@@ -393,17 +419,20 @@
     el._dpTimeline?.kill();
     el.classList.remove("is-playing");
     el.classList.add("is-gsap");
-    const trace = el.querySelector(".dp-splash__trace");
-    const glow = el.querySelector(".dp-splash__glow");
+    // The star has one outline; the CarPlay icon has three (square, "C", triangle), each
+    // starting a little after the last, so the fill and the fade wait for the last one.
+    const trace = [...el.querySelectorAll(".dp-splash__trace")];
+    const glow = [...el.querySelectorAll(".dp-splash__glow")];
     const fill = el.querySelector(".dp-splash__fill");
     const after = el.querySelectorAll(".dp-splash__after");
-    [trace, glow].forEach((p) => p.removeAttribute("pathLength"));
+    const lag = (trace.length - 1) * 0.2;
+    [...trace, ...glow].forEach((p) => p.removeAttribute("pathLength"));
     const tl = gsap.timeline();
-    tl.set([trace, glow], { opacity: 1 })
-      .fromTo(trace, { drawSVG: "0% 0%" }, { drawSVG: "0% 100%", duration: 1.6, ease: "power2.inOut" }, 0)
-      .fromTo(glow, { drawSVG: "0% 0%" }, { drawSVG: "0% 100%", duration: 1.6, ease: "power2.inOut" }, 0.08)
-      .fromTo(fill, { opacity: 0, scale: 0.96, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.8, ease: "expo.out" }, 1.25)
-      .to([trace, glow], { opacity: 0, duration: 0.8, ease: "power1.in" }, 1.8);
+    tl.set([...trace, ...glow], { opacity: 1 })
+      .fromTo(trace, { drawSVG: "0% 0%" }, { drawSVG: "0% 100%", duration: 1.6, ease: "power2.inOut", stagger: 0.2 }, 0)
+      .fromTo(glow, { drawSVG: "0% 0%" }, { drawSVG: "0% 100%", duration: 1.6, ease: "power2.inOut", stagger: 0.2 }, 0.08)
+      .fromTo(fill, { opacity: 0, scale: 0.96, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.8, ease: "expo.out" }, 1.25 + lag / 2)
+      .to([...trace, ...glow], { opacity: 0, duration: 0.8, ease: "power1.in" }, 1.8 + lag);
     if (after.length) tl.set(after, { opacity: 1, y: 0 }, 0); // the wordmark is in place from the start
     el._dpTimeline = tl;
     return tl;
@@ -443,7 +472,8 @@
     });
     root.querySelectorAll("[data-dp-splash]:not([data-ready])").forEach((el) => {
       el.dataset.ready = "";
-      el.insertAdjacentHTML("afterbegin", splash());
+      // data-dp-splash="carplay": the loading screen's CarPlay icon, traced in like the splash.
+      el.insertAdjacentHTML("afterbegin", el.dataset.dpSplash === "carplay" ? carplaySplash() : splash());
       replaySplash(el, { filled: el.dataset.dpSplash === "filled" });
     });
   }

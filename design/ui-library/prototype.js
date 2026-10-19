@@ -229,7 +229,7 @@
     const hint = s.connectionMode === "USB" ? "Keep the cable plugged in and the iPhone unlocked." : `Keep ${esc(s.iphone)} unlocked and nearby.`;
     return `
       <div class="scr-brand">
-        <div class="dp-splash${loading ? " is-loading" : ""}" data-dp-splash="${filled ? "filled" : ""}">
+        <div class="dp-splash${loading ? " is-loading" : ""}" data-dp-splash="${loading ? "carplay" : filled ? "filled" : ""}">
           ${loading ? "" : wordmarkAfter()}
         </div>
       </div>
@@ -633,8 +633,10 @@
       const to = current;
       // Rects are in screen pixels; transforms inside the scaled frame are not.
       const k = host.getBoundingClientRect().width / host.offsetWidth || 1;
+      // The loading screen's CarPlay icon is not Home's mark, so it fades instead of gliding.
+      const fromCarPlay = !!from.querySelector(".dp-splash__svg--carplay");
       const pairs = [
-        [".dp-splash__fill", ".dp-wordmark__mark"],
+        [fromCarPlay ? ".no-twin" : ".dp-splash__fill", ".dp-wordmark__mark"],
         [".dp-wordmark__name", ".dp-wordmark__name"],
         [".dp-wordmark__fork", ".dp-wordmark__fork"],
         [".dp-wordmark__tagline", ".dp-wordmark__tagline"],
@@ -664,7 +666,7 @@
           { ...MORPH, fill: "backwards" },
         );
       }
-      retire(from);
+      retire(from, fromCarPlay ? NO_SHARED : SHARED);
 
       // Everything that is new on Home arrives after the shared elements start moving.
       const arriving = [...to.querySelectorAll(".scr-home__left > *, .scr-home__rule, .scr-home__cta > *")];
@@ -697,6 +699,8 @@
       const text = all.filter((sel) => from.querySelector(sel));
       text.forEach((sel, i) => (from.querySelector(sel).dataset.flipId = `wm-${i}`));
       const flipState = text.length ? Flip.getState(from.querySelectorAll("[data-flip-id]")) : null;
+      // The loading screen's CarPlay icon is not Home's mark: Home's mark fades in instead.
+      const fromCarPlay = !!from.querySelector(".dp-splash__svg--carplay");
       const markFrom = from.querySelector(".dp-splash__fill").getBoundingClientRect();
 
       render("home", {}, { keep: from, enter: false, vt: false });
@@ -706,17 +710,18 @@
       const mark = to.querySelector(".dp-wordmark__mark");
       const markTo = mark.getBoundingClientRect();
       const k = host.getBoundingClientRect().width / host.offsetWidth || 1;
-      retire(from);
+      retire(from, fromCarPlay ? NO_SHARED : SHARED);
 
       const tl = gsap.timeline({
         onComplete: () => {
           to.classList.remove("is-morphing");
-          gsap.set([mark, ...to.querySelectorAll("[data-flip-id]")], { clearProps: "transform,filter" });
+          gsap.set([mark, ...to.querySelectorAll("[data-flip-id]")], { clearProps: "transform,filter,opacity" });
         },
       });
       if (flipState) tl.add(Flip.from(flipState, { targets: to.querySelectorAll("[data-flip-id]"), duration: 0.9, ease: "expo.out", scale: true }), 0);
       if (fadeIn.length) tl.from(fadeIn, { opacity: 0, y: 14, duration: 0.6, stagger: 0.06, ease: "expo.out" }, 0.25);
-      tl.fromTo(
+      if (fromCarPlay) tl.from(mark, { opacity: 0, scale: 0.9, duration: 0.7, ease: "expo.out" }, 0.2);
+      else tl.fromTo(
         mark,
         {
           x: (markFrom.left + markFrom.width / 2 - (markTo.left + markTo.width / 2)) / k,
@@ -737,6 +742,8 @@
     // The screen being left: its shared parts hide at once (their twins are flying), the
     // rest fades out over 300ms instead of vanishing, then it is removed.
     const SHARED = ".dp-splash__svg, .dp-wordmark__mark, .dp-wordmark__lockup > *, .dp-wordmark__tagline";
+    // Nothing shared: the whole screen fades (the CarPlay loading screen going to Home).
+    const NO_SHARED = ".no-twin";
     // `shared` names only the parts that have a twin on the next screen; anything without
     // one (Home's wordmark when going to the icon-only loading screen) fades with the rest.
     function retire(el, shared = SHARED) {
@@ -749,47 +756,13 @@
     }
 
     /*
-     * Home -> loading screen. The loading screen is the mark alone, so only the mark moves:
-     * it grows from its Home size to the centre. Home's wordmark, device card and button
-     * fade out with Home. Needs GSAP; without it the loading screen just slides in.
+     * Home -> loading screen. The loading screen shows the CarPlay icon, which has no twin on
+     * Home, so nothing glides: Home fades out and the icon traces in on its own, as in the app.
      */
     function morphToLoading(params) {
-      const from = current;
-      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (stack.length) stack[stack.length - 1].focus = DP.focus.current?.dataset?.fid;
       stack.push({ name: "connecting", params });
-      if (reduce || !DP.libs.gsap || !from?.matches(".scr-home")) return render("connecting", params);
-
-      const gsap = DP.libs.gsap;
-      const markFrom = from.querySelector(".dp-wordmark__mark").getBoundingClientRect();
-
-      render("connecting", params, { keep: from, enter: false, vt: false });
-      const to = current;
-      const svg = to.querySelector(".dp-splash__svg");
-      // The splash SVG is padded evenly round the mark, so its centre is the mark's centre.
-      const markTo = to.querySelector(".dp-splash__fill").getBoundingClientRect();
-      const k = host.getBoundingClientRect().width / host.offsetWidth || 1;
-      retire(from, ".dp-wordmark__mark");
-
-      const tl = gsap.timeline({
-        onComplete: () => {
-          to.classList.remove("is-morphing");
-          gsap.set(svg, { clearProps: "transform" });
-        },
-      });
-      tl.fromTo(
-        svg,
-        {
-          x: (markFrom.left + markFrom.width / 2 - (markTo.left + markTo.width / 2)) / k,
-          y: (markFrom.top + markFrom.height / 2 - (markTo.top + markTo.height / 2)) / k,
-          scale: markFrom.width / markTo.width,
-        },
-        { x: 0, y: 0, scale: 1, duration: 0.85, ease: "expo.out" },
-        0,
-      );
-      tl.from(to.querySelectorAll(".scr-corner:not([hidden])"), { opacity: 0, y: 12, duration: 0.5, stagger: 0.08, ease: "expo.out" }, 0.35);
-      api.morph = tl;
-      return tl;
+      return render("connecting", params);
     }
 
     function go(name, params = {}) {
