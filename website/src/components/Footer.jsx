@@ -16,7 +16,7 @@ const linkStyle = { color: "muted", _hover: { color: "text" }, w: "fit-content" 
 
 export default function Footer() {
   return (
-    <Box as="footer" borderTop="1px solid" borderColor="outline" mt={24}>
+    <Box as="footer" borderTop="1px solid" borderColor="outline">
       <Container maxW="7xl" px={{ base: 4, md: 6 }} py={14}>
         <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={10}>
           <Stack spacing={4}>
