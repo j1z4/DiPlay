@@ -3,9 +3,11 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-// Optional local-only input. CI and ordinary source builds contain no accessory identity.
-val localAuthenticationAssets = providers.environmentVariable("DIPLAY_AUTH_ASSETS_DIR")
-    .orNull?.let { file(it).canonicalFile }
+// The runtime identity ships with the repository (auth-assets/, taken from the DiPlay 0.2.21
+// release APK) so a plain source build can authenticate. DIPLAY_AUTH_ASSETS_DIR selects another.
+val bundledAuthenticationAssets = file("auth-assets").takeIf { it.resolve("offline-mfi/identity.pk8").isFile }
+val localAuthenticationAssets = (providers.environmentVariable("DIPLAY_AUTH_ASSETS_DIR")
+    .orNull?.let { file(it) } ?: bundledAuthenticationAssets)?.canonicalFile
 
 android {
     namespace = "com.shilapi.xcertplay"
@@ -98,7 +100,7 @@ val rejectBundledCredentials by tasks.registering {
 }
 tasks.named("preBuild") { dependsOn(rejectBundledCredentials) }
 
-// Car-test packages must be standalone. Keep ordinary source/CI builds identity-free.
+// Car-test packages must be standalone; with auth-assets/ in the repository every build is.
 val verifyStandaloneAuthentication by tasks.registering {
     group = "verification"
     description = "Require the explicit runtime authentication input for a standalone car-test APK."

@@ -39,3 +39,6 @@ release-signing.properties
 *.key
 *.apk
 *.aab
+# Except the runtime identity the app ships with, so source builds can authenticate.
+!mobile/auth-assets/offline-mfi/identity.pk8
+!mobile/auth-assets/offline-mfi/certificate.p7b

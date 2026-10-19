@@ -675,25 +675,24 @@ export const DOCS = [
       },
       {
         id: "car-test-build",
-        heading: "Standalone car-test build",
+        heading: "Build an APK for the car",
         blocks: [
           {
             type: "p",
-            text: "A source APK contains no accessory identity, and standalone CarPlay needs runtime authentication assets to connect to an iPhone. Prepare an external directory with these files and keep it, and its private key, outside Git:",
-          },
-          {
-            type: "code",
-            lang: "text",
-            code: "runtime-assets/\n└── offline-mfi/\n    ├── identity.pk8\n    └── certificate.p7b",
+            text: "The repository ships the runtime authentication assets in `mobile/auth-assets/offline-mfi/`: the experimental identity from the DiPlay 0.2.21 release. Every source build includes them, so this APK can connect to an iPhone:",
           },
           {
             type: "code",
             lang: "sh",
-            code: "DIPLAY_AUTH_ASSETS_DIR=/absolute/path/to/runtime-assets ./gradlew :mobile:assembleStandaloneDebug",
+            code: "./gradlew :mobile:assembleDebug\n# mobile/build/outputs/apk/debug/mobile-debug.apk",
           },
           {
             type: "p",
-            text: "The task stops if either file is absent or empty. Update an existing test app with the same signing key to keep its settings. See [Build](https://github.com/j1z4/DiPlay/blob/main/docs/BUILD.md) for release builds and troubleshooting.",
+            text: "To build with a different identity, point `DIPLAY_AUTH_ASSETS_DIR` at a directory with the same `offline-mfi/identity.pk8` and `offline-mfi/certificate.p7b` layout and run `:mobile:assembleStandaloneDebug`, which stops if either file is absent or empty.",
+          },
+          {
+            type: "p",
+            text: "Update an existing test app with the same signing key to keep its settings. See [Build](https://github.com/j1z4/DiPlay/blob/main/docs/BUILD.md) for release builds and troubleshooting.",
           },
         ],
       },

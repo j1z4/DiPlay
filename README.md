@@ -64,4 +64,4 @@ This repository starts with a clean public source snapshot. Local research, test
 
 ## Local release packaging
 
-The release APK intentionally contains the experimental accessory identity. The Git repository and source archive exclude all accessory and Android signing keys; tests generate synthetic identities at runtime. Source/CI builds omit runtime identity assets by default. Local release builds explicitly select an external asset directory. Publishing the APK makes its bundled identity extractable; building locally does not preserve that identity's confidentiality.
+The experimental accessory identity from the DiPlay 0.2.21 release APK ships in this repository at `mobile/auth-assets/offline-mfi/`, so every source build, including `./gradlew :mobile:assembleDebug`, can connect to an iPhone. `DIPLAY_AUTH_ASSETS_DIR` selects a different identity directory. Android signing keys stay out of Git; tests generate synthetic identities at runtime. The identity is public: anyone can read it here or extract it from an APK.
