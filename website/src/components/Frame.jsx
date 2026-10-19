@@ -1,5 +1,6 @@
 import { Box, Container, Heading, Stack, Text } from "@chakra-ui/react";
 import { Reveal } from "./Reveal.jsx";
+import Shimmer from "./Shimmer.jsx";
 
 /** A small square where a section rule meets a guide line. */
 function Corner({ side }) {
@@ -24,15 +25,9 @@ export function FrameSection({ children, band = false, inner = {}, ...rest }) {
   );
 }
 
-/** "How it works": the first letters of the eyebrow take the accent colour. */
+/** "How it works": a glint sweeps through the eyebrow on a loop. */
 function Eyebrow({ text }) {
-  const split = Math.max(1, Math.ceil(text.length * 0.18));
-  return (
-    <Text fontSize="sm" fontWeight={550} letterSpacing="0.01em">
-      <Box as="span" color="accent">{text.slice(0, split)}</Box>
-      <Box as="span" color="muted">{text.slice(split)}</Box>
-    </Text>
-  );
+  return <Shimmer fontSize="sm" fontWeight={550} letterSpacing="0.01em">{text}</Shimmer>;
 }
 
 /** A centred section heading: eyebrow, title, lead. */

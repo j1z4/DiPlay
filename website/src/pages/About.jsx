@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ArrowRight, GithubLogo, HandHeart, Key, Lock, SteeringWheel, Warning } from "@phosphor-icons/react";
 import Mark from "../components/Mark.jsx";
+import Shimmer from "../components/Shimmer.jsx";
 import { Reveal, SectionHeading } from "../components/Reveal.jsx";
 import { GITHUB, UPSTREAM, useTitle } from "../site.js";
 
@@ -70,7 +71,7 @@ export default function About() {
       <Container maxW="7xl" px={{ base: 4, md: 6 }} pt={{ base: 12, md: 20 }}>
         <Grid templateColumns={{ base: "1fr", lg: "1.2fr 0.8fr" }} gap={12} alignItems="center">
           <Reveal>
-            <Text fontFamily="mono" fontSize="sm" color="accent" mb={4}>// about</Text>
+            <Box mb={4}><Shimmer fontFamily="mono" fontSize="sm">// about</Shimmer></Box>
             <Heading as="h1" fontSize={{ base: "5xl", md: "7xl" }} fontWeight={650} letterSpacing="-0.045em" lineHeight={0.98}>
               CarPlay, that you own.
             </Heading>

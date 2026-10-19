@@ -1,5 +1,6 @@
 import { Box, Heading, Text, Stack } from "@chakra-ui/react";
 import { motion, useReducedMotion } from "framer-motion";
+import Shimmer from "./Shimmer.jsx";
 
 const MotionBox = motion(Box);
 
@@ -24,11 +25,7 @@ export function SectionHeading({ eyebrow, title, lead, ...rest }) {
   return (
     <Reveal {...rest}>
       <Stack spacing={4} maxW="760px">
-        {eyebrow && (
-          <Text fontFamily="mono" fontSize="sm" color="accent" letterSpacing="0.02em">
-            {eyebrow}
-          </Text>
-        )}
+        {eyebrow && <Box><Shimmer fontFamily="mono" fontSize="sm" letterSpacing="0.02em">{eyebrow}</Shimmer></Box>}
         <Heading as="h2" fontSize={{ base: "3xl", md: "5xl" }} fontWeight={600} letterSpacing="-0.03em" lineHeight={1.05}>
           {title}
         </Heading>
