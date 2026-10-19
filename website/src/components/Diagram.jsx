@@ -1,24 +1,42 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Box, HStack, Text } from "@chakra-ui/react";
 import gsap from "gsap";
 
 const W = 600;
 const H = 320;
+const SPEED = 260; // beam speed in screen pixels per second, the same on every line
+const BEAM = 72; // beam length in screen pixels
 
 /**
- * Nodes joined by lines, with light travelling along each line (GSAP). Coordinates are in a
- * 600 x 320 space; nodes are HTML so icons and labels stay crisp at any size.
+ * Nodes joined by lines, with light travelling along each line (GSAP). Layout coordinates are
+ * in a 600 x 320 space; nodes are HTML so icons and labels stay crisp at any size.
  *   nodes: [{ id, x, y, label?, icon?, accent?, big? }]
  *   edges: [{ from, to, elbow? }]   elbow: route horizontally, then vertically
  *   pill:  { text, x, y }           e.g. "Connected"
+ *
+ * Lines are drawn in the box's real pixel size, not a stretched viewBox: a stretched SVG measures
+ * path length in its own units but draws dashes in screen pixels, so beams jumped and stuttered.
  */
 export default function Diagram({ nodes, edges, pill, h = { base: "260px", md: "320px" } }) {
   const root = useRef(null);
+  const [size, setSize] = useState(null);
   const at = Object.fromEntries(nodes.map((n) => [n.id, n]));
 
+  // Follow the box's size so the lines always match the node positions.
+  useLayoutEffect(() => {
+    const el = root.current;
+    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const path = (e) => {
-    const a = at[e.from];
-    const b = at[e.to];
+    const sx = size.w / W;
+    const sy = size.h / H;
+    const a = { x: at[e.from].x * sx, y: at[e.from].y * sy };
+    const b = { x: at[e.to].x * sx, y: at[e.to].y * sy };
     if (e.elbow) {
       const mx = (a.x + b.x) / 2;
       return `M${a.x} ${a.y} H${mx} V${b.y} H${b.x}`;
@@ -27,28 +45,41 @@ export default function Diagram({ nodes, edges, pill, h = { base: "260px", md: "
   };
 
   useLayoutEffect(() => {
+    if (!size) return undefined;
     const ctx = gsap.context(() => {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       gsap.utils.toArray(".beam").forEach((el, i) => {
         const len = el.getTotalLength();
-        gsap.set(el, { strokeDasharray: `${Math.min(90, len * 0.4)} ${len + 120}`, strokeDashoffset: len + 90 });
-        gsap.to(el, { strokeDashoffset: -90, duration: 1.6 + (i % 3) * 0.3, ease: "power1.inOut", repeat: -1, delay: i * 0.35, repeatDelay: 0.6 });
+        // The beam starts just before the line and ends just past it, so each loop restarts
+        // out of sight; a linear ease keeps the same speed from end to end.
+        gsap.set(el, { strokeDasharray: `${BEAM} ${len + BEAM * 2}`, strokeDashoffset: BEAM });
+        gsap.to(el, {
+          strokeDashoffset: -len,
+          duration: (len + BEAM) / SPEED,
+          ease: "none",
+          repeat: -1,
+          repeatDelay: 0.5,
+          delay: (i * 0.37) % 1.5,
+        });
       });
     }, root);
     return () => ctx.revert();
-  }, [nodes, edges]);
+  }, [size, nodes, edges]);
 
   return (
     <Box ref={root} position="relative" w="100%" h={h}
       bgImage="radial-gradient(var(--chakra-colors-outline) 1px, transparent 1px)" bgSize="14px 14px">
-      <Box as="svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" position="absolute" inset={0} w="100%" h="100%" overflow="visible">
-        {edges.map((e) => (
-          <g key={`${e.from}-${e.to}`}>
-            <path d={path(e)} fill="none" stroke="var(--chakra-colors-outline)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-            <path className="beam" d={path(e)} fill="none" stroke="var(--chakra-colors-accent)" strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-          </g>
-        ))}
-      </Box>
+      {size && (
+        <Box as="svg" viewBox={`0 0 ${size.w} ${size.h}`} position="absolute" inset={0} w="100%" h="100%" overflow="visible">
+          {edges.map((e) => (
+            <g key={`${e.from}-${e.to}`}>
+              <path d={path(e)} fill="none" stroke="var(--chakra-colors-outline)" strokeWidth="1.5" />
+              <path className="beam" d={path(e)} fill="none" stroke="var(--chakra-colors-accent)" strokeWidth="2" strokeLinecap="round"
+                strokeDasharray="0 1" />
+            </g>
+          ))}
+        </Box>
+      )}
 
       {nodes.map((n) => (
         <Box key={n.id} position="absolute" left={`${(n.x / W) * 100}%`} top={`${(n.y / H) * 100}%`} transform="translate(-50%,-50%)" zIndex={1}>
