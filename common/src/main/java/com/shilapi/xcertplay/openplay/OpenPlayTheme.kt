@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
-import com.shilapi.xcertplay.R
+import com.shilapi.xcertplay.host.R
 
 /*
  * OpenPlay design tokens, ported one for one from design/ui-library/tokens.css.

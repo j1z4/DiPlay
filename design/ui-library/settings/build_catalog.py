@@ -2,7 +2,7 @@
 """Validate settings/catalog.json and write the copies the two previews read.
 
   design/ui-library/settings/catalog.js               (window.OPENPLAY_SETTINGS, for the web prototype)
-  mobile/src/debug/assets/openplay_settings.json      (the Android debug preview)
+  common/src/main/assets/openplay_settings.json      (the Android debug preview)
 
 Run from anywhere:  python3 design/ui-library/settings/build_catalog.py
 """
@@ -14,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 SRC = os.path.join(HERE, "catalog.json")
 WEB = os.path.join(HERE, "catalog.js")
-APP = os.path.join(ROOT, "mobile", "src", "debug", "assets", "openplay_settings.json")
+APP = os.path.join(ROOT, "common", "src", "main", "assets", "openplay_settings.json")
 
 KINDS = {"toggle", "picker", "segment", "number", "slider", "text", "button", "link", "note", "info", "swatches"}
 
