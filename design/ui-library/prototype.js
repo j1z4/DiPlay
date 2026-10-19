@@ -307,18 +307,17 @@
   /* ---------- Screens ---------- */
 
   const SCREENS = {
-    // The splash trace, then the wordmark rises and Home takes over.
-    // Boot: the trace plays with "Starting OpenPlay…" in the corner. With "Connect when
-    // OpenPlay opens" on, the same screen turns into the loading screen; otherwise it
-    // settles on "Ready to connect" and morphs into Home.
+    // The splash trace under a fixed wordmark, then Home takes over.
+    // Boot: the mark traces with the wordmark already in place under it, "Starting OpenPlay…"
+    // in the corner. Then it morphs into Home. The loading screen comes only from the
+    // Connect phone / Open CarPlay button, never straight from the splash.
     splash: {
       html: (s) => brandStage(s, { filled: false, tone: "waiting", text: "Starting OpenPlay…", loading: false }),
       mount(el, ctx) {
         ctx.later(() => {
-          if (ctx.state.connectOnOpen && !ctx.state.connected) return startLoading(el, ctx, {});
           setStatus(el, "waiting", "Ready to connect");
           ctx.later(() => ctx.morphHome(), 600);
-        }, 3400); // the wordmark rises at 1.4 s and holds for 2 s before loading takes over
+        }, 2800);
       },
     },
 
