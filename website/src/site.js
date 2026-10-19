@@ -1,3 +1,10 @@
+import { useEffect } from "react";
+
+/** Sets the browser tab's title for the current page. */
+export function useTitle(title) {
+  useEffect(() => { document.title = title; }, [title]);
+}
+
 // Links and labels used across the site.
 export const GITHUB = "https://github.com/j1z4/DiPlay";
 export const GITHUB_REPO = "j1z4/DiPlay";

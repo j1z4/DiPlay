@@ -3,7 +3,8 @@ import {
   Box, Button, Container, Divider, Drawer, DrawerBody, DrawerContent, DrawerOverlay, Flex, Grid, Heading, Link, Stack, Text, useDisclosure,
 } from "@chakra-ui/react";
 import { Link as RouterLink, NavLink, useParams } from "react-router-dom";
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { LayoutGroup, motion } from "framer-motion";
+import { useTitle } from "../site.js";
 import { ArrowLeft, ArrowRight, List, PencilSimple } from "@phosphor-icons/react";
 import { DOCS } from "../content/docs.js";
 import { DocSection, Inline } from "../components/DocBlocks.jsx";
@@ -91,6 +92,7 @@ export default function Docs() {
   const prev = DOCS[index - 1];
   const next = DOCS[index + 1];
   const menu = useDisclosure();
+  useTitle(`${doc.title} · OpenPlay docs`);
 
   return (
     <Container maxW="7xl" px={{ base: 4, md: 6 }} pt={{ base: 6, md: 12 }}>
@@ -104,8 +106,8 @@ export default function Docs() {
             Browse documentation
           </Button>
 
-          <AnimatePresence mode="wait">
-            <MotionBox key={doc.slug} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+          {/* Enter only, no exit: the new page's sections must exist as soon as it is chosen, for "On this page". */}
+          <MotionBox key={doc.slug} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}>
               <Text fontFamily="mono" fontSize="sm" color="accent" mb={3}>{doc.group}</Text>
               <Heading as="h1" fontSize={{ base: "4xl", md: "6xl" }} fontWeight={650} letterSpacing="-0.04em" lineHeight={1}>{doc.title}</Heading>
@@ -115,16 +117,15 @@ export default function Docs() {
                 {doc.sections.map((s) => <DocSection key={s.id} section={s} />)}
               </Stack>
 
-              <Link href={`${GITHUB}/tree/main/website/src/content/docs.js`} isExternal display="inline-flex" alignItems="center" gap={2} mt={14} color="muted" fontSize="sm" _hover={{ color: "text" }}>
-                <PencilSimple size={16} weight="bold" /> Edit this page on GitHub
+              <Link href={`${GITHUB}/issues/new?title=${encodeURIComponent(`Docs: ${doc.title}`)}`} isExternal display="inline-flex" alignItems="center" gap={2} mt={14} color="muted" fontSize="sm" _hover={{ color: "text" }}>
+                <PencilSimple size={16} weight="bold" /> Suggest a change to this page
               </Link>
 
               <Grid templateColumns={{ base: "1fr", sm: "1fr 1fr" }} gap={4} mt={8}>
                 {prev ? <PageLink doc={prev} dir="prev" /> : <Box />}
                 {next && <PageLink doc={next} dir="next" />}
               </Grid>
-            </MotionBox>
-          </AnimatePresence>
+          </MotionBox>
         </Box>
 
         <Box display={{ base: "none", xl: "block" }} position="sticky" top="100px" alignSelf="start">
