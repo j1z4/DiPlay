@@ -143,7 +143,8 @@ internal fun LoadingContent(
 ) {
     val c = OP.colors
     Box(Modifier.fillMaxSize()) {
-        OpenPlayMark(mark, markModifier.align(Alignment.Center).width(220.dp))
+        // The loading screen shows the CarPlay icon; the splash keeps the OpenPlay mark.
+        CarPlayMark(mark, markModifier.align(Alignment.Center).width(200.dp))
         Column(
             Modifier.align(Alignment.BottomStart).padding(start = 48.dp, bottom = 40.dp).widthIn(max = 640.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
