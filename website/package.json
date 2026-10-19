@@ -1,0 +1,29 @@
+{
+  "name": "openplay-website",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The OpenPlay website: home, documentation and about.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@chakra-ui/react": "2.10.4",
+    "@emotion/react": "11.13.5",
+    "@emotion/styled": "11.13.5",
+    "@fontsource-variable/outfit": "5.1.0",
+    "@fontsource/jetbrains-mono": "5.1.1",
+    "@phosphor-icons/react": "2.1.7",
+    "framer-motion": "11.18.2",
+    "gsap": "3.13.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.28.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "4.3.4",
+    "vite": "5.4.11"
+  }
+}
