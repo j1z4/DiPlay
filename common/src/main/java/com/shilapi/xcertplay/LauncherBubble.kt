@@ -289,7 +289,7 @@ internal object LauncherBubble {
         val target = if (CarPlayGlance.snapshot().connected) {
             CarPlayHostActivity::class.java
         } else {
-            DiPlayActivity::class.java
+            com.shilapi.xcertplay.openplay.OpenPlayActivity::class.java
         }
         val intent = Intent(context, target).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { context.startActivity(intent) }

@@ -407,7 +407,7 @@ class CarPlayHostSettingsTest {
         assertSame(controller, field("controller"))
         assertEquals(0, field("restartGeneration"))
         val intent = shadowOf(activity).nextStartedActivity
-        assertEquals(DiPlayActivity::class.java.name, intent.component!!.className)
+        assertEquals(com.shilapi.xcertplay.openplay.OpenPlayActivity::class.java.name, intent.component!!.className)
         assertEquals("settings", intent.getStringExtra("page"))
     }
 
@@ -417,7 +417,7 @@ class CarPlayHostSettingsTest {
         fullSettingsButton().performClick()
         assertNull(ShadowAlertDialog.getLatestAlertDialog())
         assertFalse(field("menuOpen") as Boolean)
-        assertEquals(DiPlayActivity::class.java.name,
+        assertEquals(com.shilapi.xcertplay.openplay.OpenPlayActivity::class.java.name,
             shadowOf(activity).nextStartedActivity.component!!.className)
     }
 

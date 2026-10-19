@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OpenPlay brand name: a product name, the same in every locale. -->
+<resources>
+    <string name="openplay_app_name">OpenPlay</string>
+</resources>

@@ -6026,7 +6026,9 @@ class CarPlayHostActivity : ComponentActivity() {
 
     private fun showDiPlayHome(page: String = "home") {
         controller?.sendTouch(emptyList())
-        OwnScreenStart.start(this, Intent(this, DiPlayActivity::class.java)
+        // Home and settings are OpenPlay's; Wi-Fi recovery is a classic DiPlay dialog.
+        val target = if (page == "wireless-recovery") DiPlayActivity::class.java else com.shilapi.xcertplay.openplay.OpenPlayActivity::class.java
+        OwnScreenStart.start(this, Intent(this, target)
             .putExtra("page", page).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT), ::appendLog)
     }
 

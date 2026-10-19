@@ -58,16 +58,26 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/update_apk_paths" />
         </provider>
-        <activity android:name="com.shilapi.xcertplay.DiPlayActivity"
+        <!-- OpenPlay: the launcher screen (splash, Home, Settings). It drives the same session,
+             settings and services as the classic screen below. -->
+        <activity android:name="com.shilapi.xcertplay.openplay.OpenPlayActivity"
             android:exported="true" android:launchMode="singleTop"
+            android:label="@string/openplay_app_name"
             android:resizeableActivity="true"
             android:configChanges="density|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
-            android:theme="@style/Theme.Xcertplay">
+            android:theme="@style/Theme.OpenPlay">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- The classic DiPlay screen. Still the target of the setup guide, connection setup,
+             backup and the advanced tools that OpenPlay links to. -->
+        <activity android:name="com.shilapi.xcertplay.DiPlayActivity"
+            android:exported="true" android:launchMode="singleTop"
+            android:resizeableActivity="true"
+            android:configChanges="density|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:theme="@style/Theme.Xcertplay" />
         <service android:name="com.shilapi.xcertplay.DiPlaySessionService"
             android:exported="false" android:foregroundServiceType="connectedDevice|microphone|location" />
 
