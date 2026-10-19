@@ -2025,6 +2025,11 @@ class CarPlayHostActivity : ComponentActivity() {
         }
         paintWaitingScreen()
         viewport.addView(panel, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
+        // The OpenPlay loading screen covers the classic panel and mirrors its live state.
+        com.shilapi.xcertplay.openplay.attachOpenPlayLoading(
+            viewport,
+            com.shilapi.xcertplay.openplay.OpenPlayLoadingViews(panel, stage, instructions, help, gestureHint, retry, recovery, back),
+        )
         root.addView(viewport, FrameLayout.LayoutParams(-1, -1))
         // Above the video and gesture layer, below the menus.
         sidePanelBlur = ImageView(this).apply {
