@@ -32,7 +32,7 @@ export default function Header() {
     <>
       {/* Announcement bar */}
       <Box bg="surface2" borderBottom="1px solid" borderColor="outline">
-        <Container maxW="7xl" py={2} px={{ base: 4, md: 6 }}>
+        <Container maxW="1680px" py={2} px={{ base: 4, md: 8, xl: 12 }}>
           <Link href={GITHUB} isExternal fontSize="sm" color="muted" display="inline-flex" alignItems="center" gap={1.5} _hover={{ color: "text" }}>
             <Box as="span" w="6px" h="6px" borderRadius="full" bg="accent" />
             OpenPlay is a fork of DiPlay {BASE_VERSION}, public preview. Follow it on GitHub
@@ -54,7 +54,7 @@ export default function Header() {
         <Link href="#content" position="absolute" left="-999px" _focus={{ left: 4, top: 3, bg: "surface", px: 3, py: 2, borderRadius: "md" }}>
           Skip to content
         </Link>
-        <Container maxW="7xl" px={{ base: 4, md: 6 }}>
+        <Container maxW="1680px" px={{ base: 4, md: 8, xl: 12 }}>
           <Flex h="68px" align="center" justify="space-between">
             <Wordmark />
 

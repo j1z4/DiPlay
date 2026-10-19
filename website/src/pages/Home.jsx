@@ -1,13 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  Box, Button, Container, Flex, Grid, Heading, HStack, Image, Link, SimpleGrid, Stack, Tag, Text, Wrap, WrapItem,
+  Box, Button, Container, Flex, Grid, Heading, HStack, Image, Link, SimpleGrid, Stack, Text,
 } from "@chakra-ui/react";
 import { Link as RouterLink } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
-  ArrowRight, BookOpen, Broadcast, CarProfile, ChatCircleDots, DownloadSimple, GithubLogo, NavigationArrow,
+  ArrowRight, ArrowUpRight, BookOpen, Broadcast, CarProfile, ChatCircleDots, DownloadSimple, GithubLogo, NavigationArrow,
   Plugs, ShieldCheck, SlidersHorizontal, Star, WifiHigh,
 } from "@phosphor-icons/react";
 import Mark from "../components/Mark.jsx";
@@ -18,7 +18,8 @@ gsap.registerPlugin(ScrollTrigger);
 
 const MotionBox = motion(Box);
 
-const CHIPS = ["wired usb", "wireless", "wi-fi direct", "car hotspot", "same lan", "byd hud", "no dongle", "open source"];
+// What CarPlay brings into the car: the faded cascade down the hero's right edge.
+const CASCADE = ["maps", "music", "messages", "calls", "siri", "podcasts", "audiobooks", "calendar", "weather"];
 
 // The loading screen's status line, cycling as it does while CarPlay connects.
 const STATUSES = [
@@ -41,7 +42,8 @@ function useStars() {
   return stars;
 }
 
-function StatusPill() {
+/** The app's status line: a dot and one line of text that crossfades, no slide. */
+function StatusLine() {
   const [i, setI] = useState(0);
   const reduce = useReducedMotion();
   useEffect(() => {
@@ -50,35 +52,46 @@ function StatusPill() {
   }, []);
   const s = STATUSES[i];
   return (
-    <HStack
-      position="absolute"
-      left={{ base: "50%", lg: "4%" }}
-      bottom={{ base: "-6px", lg: "8%" }}
-      transform={{ base: "translateX(-50%)", lg: "none" }}
-      spacing={3}
-      px={4}
-      py={2.5}
-      bg="surface"
-      border="1px solid"
-      borderColor="outline"
-      borderRadius="full"
-      boxShadow="0 18px 40px -16px rgba(0,0,0,0.6)"
-      minW="250px"
-    >
-      <Box position="relative" w="10px" h="10px">
+    <HStack spacing={3} minW="220px">
+      <Box position="relative" w="10px" h="10px" flex="none">
         <Box position="absolute" inset={0} borderRadius="full" bg={s.tone} />
         {s.tone === "accent" && !reduce && (
           <MotionBox position="absolute" inset={0} borderRadius="full" bg="accent"
             animate={{ scale: [1, 2.4], opacity: [0.6, 0] }} transition={{ duration: 1.4, repeat: Infinity, ease: "easeOut" }} />
         )}
       </Box>
-      {/* Crossfade, as the app's status line does: no slide. */}
       <AnimatePresence mode="wait">
         <MotionBox key={s.text} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.24 }}>
-          <Text fontWeight={550} fontSize="sm" color={s.tone === "accent" ? "accent" : "text"}>{s.text}</Text>
+          <Text fontWeight={550} fontSize="sm" color={s.tone === "accent" ? "accent" : "muted"} whiteSpace="nowrap">{s.text}</Text>
         </MotionBox>
       </AnimatePresence>
     </HStack>
+  );
+}
+
+/** Large faded words down the right edge; GSAP staggers them in and lets them drift. */
+function Cascade() {
+  const root = useRef(null);
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      gsap.fromTo(".cw", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 1.2, ease: "expo.out", stagger: 0.07, delay: 0.4 });
+      gsap.utils.toArray(".cw").forEach((el, i) => {
+        gsap.to(el, { x: i % 2 ? -14 : 14, duration: 5 + (i % 3), ease: "sine.inOut", yoyo: true, repeat: -1, delay: 1.6 + i * 0.2 });
+      });
+    }, root);
+    return () => ctx.revert();
+  }, []);
+  return (
+    <Stack ref={root} spacing={{ lg: 1, "2xl": 2 }} align="flex-end" aria-hidden="true" userSelect="none">
+      {CASCADE.map((w, i) => (
+        <Text key={w} className="cw" fontFamily="mono" fontWeight={400} lineHeight={1.05} letterSpacing="0.04em"
+          fontSize={{ lg: "44px", xl: "54px", "2xl": "64px" }}
+          color="cascade" whiteSpace="nowrap">
+          {w}
+        </Text>
+      ))}
+    </Stack>
   );
 }
 
@@ -93,30 +106,30 @@ function Hero() {
 
   return (
     <Box position="relative" overflow="hidden">
-      {/* A faint signal grid behind the hero. */}
-      <Box position="absolute" inset={0} opacity={0.5} pointerEvents="none"
+      {/* A faint signal grid and a green bloom behind the wordmark. */}
+      <Box position="absolute" inset={0} opacity={0.45} pointerEvents="none"
         bgImage="linear-gradient(var(--chakra-colors-outline) 1px, transparent 1px), linear-gradient(90deg, var(--chakra-colors-outline) 1px, transparent 1px)"
         bgSize="56px 56px"
-        sx={{ maskImage: "radial-gradient(ellipse at 70% 40%, black 10%, transparent 70%)" }} />
-      <Container maxW="7xl" px={{ base: 4, md: 6 }} pt={{ base: 12, md: 20 }} pb={{ base: 16, md: 24 }} position="relative">
-        <Grid templateColumns={{ base: "1fr", lg: "1.1fr 0.9fr" }} gap={{ base: 14, lg: 10 }} alignItems="center">
-          <Stack spacing={7}>
-            <MotionBox {...item(0)}>
-              <Link href={`${UPSTREAM}/releases/tag/v${BASE_VERSION}`} isExternal>
-                <Tag size="lg" borderRadius="full" bg="accentSoft" color="accent" fontFamily="mono" fontSize="xs" px={3} gap={2}>
-                  <Box w="6px" h="6px" borderRadius="full" bg="accent" />
-                  based on DiPlay v{BASE_VERSION}
-                </Tag>
-              </Link>
-            </MotionBox>
+        sx={{ maskImage: "radial-gradient(ellipse at 50% 45%, black 10%, transparent 72%)" }} />
+      <Box position="absolute" left="50%" top="46%" w="900px" h="560px" transform="translate(-50%,-50%)" pointerEvents="none"
+        bg="radial-gradient(ellipse, rgba(61,255,110,0.13) 0%, transparent 62%)" />
 
-            <MotionBox {...item(0.06)}>
-              {/* The fork line hangs from the wordmark's right edge, clear of the "y". */}
+      <Box maxW="1680px" mx="auto" px={{ base: 4, md: 8, xl: 12 }} pt={{ base: 10, md: 14 }} pb={{ base: 14, md: 16 }} position="relative">
+        <Grid templateColumns={{ base: "1fr", lg: "minmax(0,1fr) minmax(0,760px) minmax(0,1fr)" }} gap={{ base: 10, lg: 8 }} alignItems="start">
+          {/* Top-left: the traced mark over the live status line, as on the app's loading screen. */}
+          <Stack spacing={5} align={{ base: "center", lg: "flex-start" }} pt={{ lg: 2 }}>
+            <Mark size={128} trace glow />
+            <Box display={{ base: "none", lg: "block" }}><StatusLine /></Box>
+          </Stack>
+
+          {/* Center: wordmark, tagline, one line of what it is, two buttons. */}
+          <Stack spacing={8} align="center" textAlign="center" pt={{ lg: "200px", xl: "220px" }}>
+            <MotionBox {...item(0.05)}>
               <Box display="inline-block">
-                <Heading as="h1" fontSize={{ base: "64px", sm: "88px", md: "112px" }} fontWeight={650} letterSpacing="-0.045em" lineHeight={0.92}>
+                <Heading as="h1" fontSize={{ base: "64px", sm: "92px", md: "120px", xl: "136px" }} fontWeight={650} letterSpacing="-0.045em" lineHeight={0.9}>
                   OpenPlay
                 </Heading>
-                <Text fontWeight={600} fontSize={{ base: "md", md: "lg" }} color="muted" textAlign="right" mt={{ base: 3, md: 4 }}>
+                <Text fontWeight={600} fontSize={{ base: "md", md: "xl" }} color="muted" textAlign="right" mt={{ base: 3, md: 4 }}>
                   (a fork of DiPlay)
                 </Text>
               </Box>
@@ -126,25 +139,13 @@ function Hero() {
               <Text fontSize={{ base: "2xl", md: "4xl" }} fontWeight={600} letterSpacing="-0.02em" lineHeight={1.1}>
                 CarPlay, that you own.
               </Text>
-              <Text mt={4} fontSize={{ base: "lg", md: "xl" }} color="muted" maxW="560px" lineHeight={1.5}>
-                Wired and wireless CarPlay for compatible BYD Android head units. Install it on the car. No dongle, jailbreak, Mac or account.
+              <Text mt={4} fontSize={{ base: "lg", md: "xl" }} color="muted" maxW="640px" lineHeight={1.55} mx="auto">
+                Wired and wireless CarPlay for compatible BYD Android head units. It runs on the car itself: no dongle, jailbreak, Mac or account.
               </Text>
             </MotionBox>
 
-            <MotionBox {...item(0.18)}>
-              <Wrap spacing={2}>
-                {CHIPS.map((c) => (
-                  <WrapItem key={c}>
-                    <Box fontFamily="mono" fontSize="sm" px={3} py={1} borderRadius="md" border="1px solid" borderColor="outline" bg="surface" color="muted">
-                      {c}
-                    </Box>
-                  </WrapItem>
-                ))}
-              </Wrap>
-            </MotionBox>
-
-            <MotionBox {...item(0.24)}>
-              <Flex gap={3} wrap="wrap">
+            <MotionBox {...item(0.2)}>
+              <Flex gap={3} wrap="wrap" justify="center">
                 <Button as={RouterLink} to="/docs" variant="primary" size="lg" rightIcon={<ArrowRight weight="bold" />}>
                   Read the docs
                 </Button>
@@ -159,16 +160,49 @@ function Hero() {
                 </Button>
               </Flex>
             </MotionBox>
+
+            <Box display={{ base: "block", lg: "none" }}><StatusLine /></Box>
           </Stack>
 
-          <Box position="relative" display="grid" placeItems="center" minH={{ base: "320px", md: "460px" }}>
-            <Box position="absolute" w="120%" h="120%" bg="radial-gradient(circle, rgba(61,255,110,0.18) 0%, transparent 60%)" pointerEvents="none" />
-            <Mark size={300} trace glow />
-            <StatusPill />
+          {/* Right: the faded cascade, filling the edge on wide screens. */}
+          <Box display={{ base: "none", lg: "block" }}>
+            <Cascade />
           </Box>
         </Grid>
-      </Container>
+
+        <ReleaseBox />
+      </Box>
     </Box>
+  );
+}
+
+/** The bordered release note under the hero: version on the left, what changed on the right. */
+function ReleaseBox() {
+  return (
+    <Reveal maxW="1100px" mx="auto" mt={{ base: 14, lg: 10 }}>
+      <Grid templateColumns={{ base: "1fr", md: "200px 1fr" }} gap={{ base: 4, md: 8 }} p={{ base: 6, md: 8 }}
+        border="1px solid" borderColor="outline" borderRadius="card" bg="surface"
+        boxShadow="inset 0 1px 0 rgba(255,255,255,0.04)">
+        <Box fontFamily="mono" color="accent" fontSize={{ base: "lg", md: "xl" }} lineHeight={1.4}>
+          <Text>DiPlay</Text>
+          <Text>v{BASE_VERSION}</Text>
+        </Box>
+        <Box>
+          <Text color="muted" fontSize="lg" lineHeight={1.65}>
+            <Link href={`${UPSTREAM}/releases/tag/v${BASE_VERSION}`} isExternal color="text" fontWeight={600}
+              textDecoration="underline" textUnderlineOffset="4px" textDecorationColor="accent">
+              OpenPlay is built on DiPlay {BASE_VERSION}.
+            </Link>{" "}
+            Music plays in step with the iPhone again, wired CarPlay recovers by itself when the iPhone never opens it, and the
+            microphone no longer closes the app on head units without Android's own Opus encoder. It installs on Android 7.0 and later.
+          </Text>
+          <Link href={`${UPSTREAM}/blob/main/docs/RELEASE-NOTES-${BASE_VERSION}.md`} isExternal display="inline-flex" alignItems="center" gap={1.5}
+            mt={4} color="accent" fontWeight={600} fontSize="sm">
+            Release notes <ArrowUpRight size={14} weight="bold" />
+          </Link>
+        </Box>
+      </Grid>
+    </Reveal>
   );
 }
 

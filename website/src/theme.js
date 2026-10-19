@@ -53,6 +53,8 @@ const theme = extendTheme({
       accent: { default: "#0e9e3e", _dark: "#2fe46a" },
       accentSoft: { default: "rgba(14,158,62,0.10)", _dark: "rgba(47,228,106,0.12)" },
       warning: { default: "#a3620a", _dark: "#ffbd5c" },
+      // The hero's decorative word cascade: present, never competing with the wordmark.
+      cascade: { default: "rgba(11,13,17,0.08)", _dark: "rgba(245,247,250,0.09)" },
     },
   },
   radii: { card: "28px", control: "16px" },
