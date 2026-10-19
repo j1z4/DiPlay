@@ -137,6 +137,8 @@ class AudioRebufferDiagnosticsTest {
                 set("playbackStarted", true)
                 set("underrunsAtPlaybackStart", 0)
                 set("lastPcmWriteNs", System.nanoTime())
+                // Steady state: past the startup grace, in which music skips rebuffer pauses.
+                set("firstPlaybackNs", System.nanoTime() - 10_000_000_000L)
                 bufferProgress.written(threshold)
 
                 // Simulate hardware underrun (head position equals written samples)
