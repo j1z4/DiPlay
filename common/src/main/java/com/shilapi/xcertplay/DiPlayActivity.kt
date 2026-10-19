@@ -410,6 +410,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         render()
         scheduleAutomaticVehicleValidation()
         handleWirelessRecovery()
+        handleOpenPlayAction(intent)
         if (consumeBluetoothAutoConnectIntent(intent)) {
             if (initialLaunch) {
                 initialLaunch = false
@@ -437,12 +438,30 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         automaticVehicleValidationStarted = false
         scheduleAutomaticVehicleValidation()
         handleWirelessRecovery()
+        handleOpenPlayAction(intent)
         if (consumeBluetoothAutoConnectIntent(intent)) {
             if (initialLaunch) {
                 initialLaunch = false
                 startCarHotspotOnLaunch()
             }
             handler.post { connect(true) }
+        }
+    }
+    /** OpenPlay hands a connect or an iPhone choice here when it needs this screen's dialogs (car hotspot, Bluetooth, setup). */
+    private fun handleOpenPlayAction(intent: Intent) {
+        intent.getStringExtra(com.shilapi.xcertplay.openplay.OpenPlaySession.EXTRA_SETTINGS_CATEGORY)?.let { name ->
+            intent.removeExtra(com.shilapi.xcertplay.openplay.OpenPlaySession.EXTRA_SETTINGS_CATEGORY)
+            runCatching { SettingsCategory.valueOf(name.uppercase()) }.getOrNull()?.let { settingsCategory = it; render() }
+        }
+        val action = intent.getStringExtra(com.shilapi.xcertplay.openplay.OpenPlaySession.EXTRA_ACTION) ?: return
+        intent.removeExtra(com.shilapi.xcertplay.openplay.OpenPlaySession.EXTRA_ACTION)
+        handler.post {
+            when (action) {
+                com.shilapi.xcertplay.openplay.OpenPlaySession.ACTION_CONNECT_WIRELESS -> connect(true)
+                com.shilapi.xcertplay.openplay.OpenPlaySession.ACTION_CONNECT_USB -> connect(false)
+                com.shilapi.xcertplay.openplay.OpenPlaySession.ACTION_CHOOSE_PHONE -> choosePhone()
+                com.shilapi.xcertplay.openplay.OpenPlaySession.ACTION_ADB_CHECK -> checkAdbState(true)
+            }
         }
     }
     private fun consumeBluetoothAutoConnectIntent(intent: Intent): Boolean {
