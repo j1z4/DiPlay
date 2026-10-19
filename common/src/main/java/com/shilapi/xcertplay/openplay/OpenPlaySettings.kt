@@ -8,10 +8,10 @@ import org.json.JSONObject
 /*
  * The settings catalog: every user-visible setting of the app, by category and card.
  * Generated from design/ui-library/settings/catalog.json (build_catalog.py), the same file
- * the web prototype reads, so the two previews cannot drift apart.
+ * the web walkthrough reads.
  *
- * Values live in their own preferences file ("openplay_preview"); the preview never reads or
- * writes the app's real settings.
+ * Values are the app's real settings: RealSettings reads and writes them through
+ * OpenPlayBindings, with the same follow-up the classic screen runs.
  */
 
 class Row(
@@ -122,21 +122,19 @@ fun loadCatalog(context: Context): Catalog {
     return Catalog(categories, pages)
 }
 
-/** Values for every setting, saved to the preview's own preferences. */
-class PreviewSettings(context: Context, private val catalog: Catalog) {
-    private val prefs = context.getSharedPreferences("openplay_preview", Context.MODE_PRIVATE)
+/**
+ * The app's real settings, in the catalog's terms. [reload] reads every value through
+ * OpenPlayBindings; [set] saves through them (with the classic follow-up) and reloads, so the
+ * screen always shows what the app will actually use.
+ */
+internal class RealSettings(private val context: Context, private val catalog: Catalog) {
     val values = mutableStateMapOf<String, Any?>()
 
-    init {
+    init { reload() }
+
+    fun reload() {
         catalog.rows.forEach { (key, pair) ->
-            val def = pair.first.default
-            values[key] = when (def) {
-                is Boolean -> prefs.getBoolean(key, def)
-                is Number -> if (prefs.contains(key)) prefs.getFloat(key, def.toFloat()).toDouble() else def.toDouble()
-                is String -> prefs.getString(key, def)
-                is List<*> -> prefs.getString(key, null)?.let { s -> JSONArray(s).let { a -> (0 until a.length()).map { a.getInt(it) } } } ?: def.map { (it as Number).toInt() }
-                else -> def
-            }
+            values[key] = runCatching { OpenPlayBindings.read(context, key, pair.first) }.getOrElse { pair.first.default }
         }
     }
 
@@ -145,20 +143,19 @@ class PreviewSettings(context: Context, private val catalog: Catalog) {
     fun string(key: String) = values[key]?.toString() ?: ""
     fun number(key: String) = (values[key] as? Number)?.toDouble() ?: 0.0
 
-    fun set(key: String, value: Any?) {
-        values[key] = value
-        prefs.edit().apply {
-            when (value) {
-                is Boolean -> putBoolean(key, value)
-                is Number -> putFloat(key, value.toFloat())
-                is String -> putString(key, value)
-                is List<*> -> putString(key, JSONArray(value).toString())
-            }
-        }.apply()
+    fun set(host: SettingsHost, key: String, value: Any?) {
+        val row = catalog.rows[key]?.first ?: return
+        if (values[key] == value) return
+        OpenPlayBindings.write(host, key, row, value)
+        reload()
     }
 
-    fun visible(row: Row) = row.condition.all { (k, allowed) ->
-        val v = values[k]
-        allowed.any { a -> a == v || (a is Number && v is Number && a.toDouble() == v.toDouble()) }
+    /** A row shows when its 'when' matches and the classic screen would show it on this head unit. */
+    fun visible(row: Row): Boolean {
+        if (row.key != null && !OpenPlayBindings.available(context, row.key)) return false
+        return row.condition.all { (k, allowed) ->
+            val v = values[k]
+            allowed.any { a -> a == v || (a is Number && v is Number && a.toDouble() == v.toDouble()) }
+        }
     }
 }
