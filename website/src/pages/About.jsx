@@ -6,7 +6,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ArrowRight, GithubLogo, HandHeart, Key, Lock, SteeringWheel, Warning } from "@phosphor-icons/react";
 import Mark from "../components/Mark.jsx";
 import { Reveal, SectionHeading } from "../components/Reveal.jsx";
-import { GITHUB, UPSTREAM } from "../site.js";
+import { GITHUB, UPSTREAM, useTitle } from "../site.js";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -64,6 +64,7 @@ function Lineage() {
 }
 
 export default function About() {
+  useTitle("About · OpenPlay");
   return (
     <>
       <Container maxW="7xl" px={{ base: 4, md: 6 }} pt={{ base: 12, md: 20 }}>
@@ -86,7 +87,7 @@ export default function About() {
       </Container>
 
       <Container maxW="7xl" px={{ base: 4, md: 6 }} pt={{ base: 24, md: 32 }}>
-        <SectionHeading eyebrow="// lineage" title="Built on open source." lead="Each project keeps its licence and its notices. OpenPlay adds its interface on top." />
+        <SectionHeading eyebrow="// lineage" title="Built on open source." lead="DiPlay combines xcertplay's CarPlay receiver with an interface adapted from DiAuto. OpenPlay forks DiPlay and gives it a new interface. Each project keeps its licence and notices." />
         <Lineage />
       </Container>
 

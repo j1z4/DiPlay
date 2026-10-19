@@ -11,7 +11,7 @@ import Bento from "../components/home/Bento.jsx";
 import HowItWorks from "../components/home/HowItWorks.jsx";
 import Faq from "../components/home/Faq.jsx";
 import OrbitCta from "../components/home/OrbitCta.jsx";
-import { GITHUB, GITHUB_REPO, UPSTREAM, BASE_VERSION } from "../site.js";
+import { GITHUB, GITHUB_REPO, UPSTREAM, BASE_VERSION, useTitle } from "../site.js";
 
 const MotionBox = motion(Box);
 
@@ -231,6 +231,7 @@ function Showcase() {
 }
 
 export default function Home() {
+  useTitle("OpenPlay: CarPlay, that you own");
   return (
     <>
       <Hero />

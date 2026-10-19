@@ -28,11 +28,12 @@ export default function Footer() {
           </Column>
           <Column title="Project">
             <Link href={GITHUB} isExternal {...linkStyle}>GitHub</Link>
-            <Link href={`${GITHUB}/releases`} isExternal {...linkStyle}>Releases</Link>
             <Link href={ISSUES} isExternal {...linkStyle}>Report a problem</Link>
+            <Link as={RouterLink} to="/docs/build-from-source" {...linkStyle}>Build from source</Link>
           </Column>
           <Column title="Upstream">
             <Link href={UPSTREAM} isExternal {...linkStyle}>DiPlay</Link>
+            <Link href={`${UPSTREAM}/releases`} isExternal {...linkStyle}>DiPlay releases</Link>
             <Link href="https://github.com/shilapi/xcertplay" isExternal {...linkStyle}>xcertplay</Link>
             <Link href="https://github.com/shihabal3amri/DiAuto" isExternal {...linkStyle}>DiAuto</Link>
           </Column>

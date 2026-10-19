@@ -51,7 +51,9 @@ export default function Header() {
         borderBottom="1px solid"
         borderColor="outline"
       >
-        <Link href="#content" position="absolute" left="-999px" _focus={{ left: 4, top: 3, bg: "surface", px: 3, py: 2, borderRadius: "md" }}>
+        {/* With hash routes, "#content" would be read as a route; move focus to the page instead. */}
+        <Link href="#content" position="absolute" left="-999px" _focus={{ left: 4, top: 3, bg: "surface", px: 3, py: 2, borderRadius: "md" }}
+          onClick={(e) => { e.preventDefault(); const main = document.getElementById("content"); main?.focus(); main?.scrollIntoView(); }}>
           Skip to content
         </Link>
         <Container maxW="1680px" px={{ base: 4, md: 8, xl: 12 }}>
