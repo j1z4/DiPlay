@@ -590,9 +590,9 @@
   transition: height var(--dp-dur-base) var(--dp-ease-spring);
 }
 .dp-rail__item:hover { color: var(--dp-text); background: var(--dp-surface); }
-.dp-rail__item[aria-current="page"] { color: var(--dp-text); background: var(--dp-surface-2); box-shadow: var(--dp-highlight); }
-.dp-rail__item[aria-current="page"]::before { height: 22px; }
-.dp-rail__item[aria-current="page"] .dp-glyph { color: var(--dp-brand-strong); }
+/* The current category is white like a focused one; focus adds the scale. */
+.dp-rail__item[aria-current="page"] { color: var(--dp-focus-text); background: var(--dp-focus-fill); }
+.dp-rail__item[aria-current="page"]::before { height: 0; }
 .dp-rail__item.is-focused::before,
 .dp-rail__item:focus-visible::before { height: 0; }
 .dp-rail__item.is-focused .dp-glyph,

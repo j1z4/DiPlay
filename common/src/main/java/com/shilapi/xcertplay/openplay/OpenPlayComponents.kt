@@ -487,21 +487,17 @@ fun RailItem(label: String, icon: PhIcon, current: Boolean, onClick: () -> Unit,
     val focused by source.collectIsFocusedAsState()
     if (focused) androidx.compose.runtime.LaunchedEffect(Unit) { onFocus() }
     val scale by animateFloatAsState(if (focused) OP.FOCUS_SCALE else 1f, if (focused) OP.focusSpring() else OP.restSpring(), label = "rail")
-    val bar by animateDpAsState(if (current && !focused) 22.dp else 0.dp, OP.focusSpring(), label = "bar")
-    val bg = when {
-        focused -> c.focusFill
-        current -> c.surface2
-        else -> Color.Transparent
-    }
-    val ink = if (focused) c.focusText else if (current) c.text else c.textSecondary
+    // The current category is white like a focused one; focus adds the scale.
+    val lit = focused || current
+    val bg by animateColorAsState(if (lit) c.focusFill else Color.Transparent, tween(160), label = "railFill")
+    val ink by animateColorAsState(if (lit) c.focusText else c.textSecondary, tween(160), label = "railInk")
     Box(
         Modifier.graphicsLayer { scaleX = scale; scaleY = scale }
             .fillMaxWidth().height(48.dp).clip(RoundedCornerShape(14.dp)).background(bg)
             .clickable(interactionSource = source, indication = null, onClick = onClick),
     ) {
-        Box(Modifier.align(Alignment.CenterStart).width(3.dp).height(bar).clip(CircleShape).background(c.brandStrong))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Ph(icon, 20.sp, if (current && !focused) c.brandStrong else ink)
+            Ph(icon, 20.sp, ink)
             BasicText(label, style = OP.text(17.sp, 600).copy(color = ink))
         }
     }
