@@ -758,6 +758,9 @@ body > .dp-toast-stack { position: fixed; }
   cursor: default;
   background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 12%, transparent), transparent 70%);
 }
+/* The wash keeps a gap below the divider, like the card's own inset below it. */
+.dp-card__item--status { margin-top: var(--dp-space-2); }
+.dp-card__item.dp-card__item--status::before { top: calc(-1 * var(--dp-space-2)); }
 .dp-card__item--status:hover { background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 12%, transparent), transparent 70%); }
 .dp-card__item--status[data-tone="waiting"] { --tone: var(--dp-text-secondary); }
 .dp-card__item--status[data-tone="connecting"] { --tone: var(--dp-brand-strong); }

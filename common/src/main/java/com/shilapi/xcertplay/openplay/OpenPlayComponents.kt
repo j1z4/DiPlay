@@ -436,7 +436,8 @@ fun DeviceCard(items: List<CardItem>, tone: Tone, status: String, modifier: Modi
         Divider()
         val toneColor = tone.color()
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(OP.cardRadius - 6.dp))
+            // The wash keeps the same gap below the divider as the card's inset below it.
+            Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(OP.cardRadius - 6.dp))
                 .background(Brush.horizontalGradient(0f to toneColor.copy(alpha = 0.12f), 0.7f to Color.Transparent))
                 .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
