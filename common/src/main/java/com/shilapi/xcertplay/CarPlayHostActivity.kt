@@ -812,7 +812,8 @@ class CarPlayHostActivity : ComponentActivity() {
             AirPlayPersistence.saveWirelessEnabled(this, false)
         }
         if (runCatching { DiPlayBootstrap.ensure(this, AirPlayPersistence.loadMfiTarget(this)) }.isFailure) {
-            OwnScreenStart.start(this, Intent(this, DiPlayActivity::class.java), ::appendLog)
+            // OpenPlay's Home shows "Setup needs attention" and leads to the fix.
+            OwnScreenStart.start(this, Intent(this, com.shilapi.xcertplay.openplay.OpenPlayActivity::class.java), ::appendLog)
             finish(); return
         }
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -6031,10 +6032,12 @@ class CarPlayHostActivity : ComponentActivity() {
 
     private fun showDiPlayHome(page: String = "home") {
         controller?.sendTouch(emptyList())
-        // Home and settings are OpenPlay's; Wi-Fi recovery is a classic DiPlay dialog.
-        val target = if (page == "wireless-recovery") DiPlayActivity::class.java else com.shilapi.xcertplay.openplay.OpenPlayActivity::class.java
-        OwnScreenStart.start(this, Intent(this, target)
-            .putExtra("page", page).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT), ::appendLog)
+        // Home and settings are OpenPlay's; Wi-Fi recovery is DiPlay's dialog, over its
+        // Connection settings and back to OpenPlay afterwards.
+        val intent = if (page == "wireless-recovery") com.shilapi.xcertplay.openplay.OpenPlaySession.classicIntent(this, page)
+        else Intent(this, com.shilapi.xcertplay.openplay.OpenPlayActivity::class.java)
+            .putExtra("page", page).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        OwnScreenStart.start(this, intent, ::appendLog)
     }
 
     /** Keep a timed-out sink visible to surface teardown until its codecs have actually been released. */

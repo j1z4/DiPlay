@@ -40,6 +40,19 @@ internal object OpenPlaySession {
     const val ACTION_ADB_CHECK = "adb_check"
     /** Opens DiPlay's Settings on this category (SettingsCategory name, any case). */
     const val EXTRA_SETTINGS_CATEGORY = "com.shihab.diplay.OPENPLAY_SETTINGS_CATEGORY"
+    /**
+     * Marks a classic screen opened for OpenPlay: it never shows DiPlay's old home, and leaving
+     * its page returns to OpenPlay.
+     */
+    const val EXTRA_FRONT_END = "com.shihab.diplay.OPENPLAY_FRONT_END"
+
+    /** A classic DiPlay page opened on OpenPlay's behalf. */
+    fun classicIntent(context: Context, page: String, category: String? = null): Intent =
+        Intent(context, DiPlayActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            .putExtra("page", page)
+            .putExtra(EXTRA_FRONT_END, true)
+            .apply { if (category != null) putExtra(EXTRA_SETTINGS_CATEGORY, category) }
 
     /** The last failure the CarPlay host reported, until the next attempt (see OpenPlayLoading). */
     @Volatile var lastFailure: String? = null
@@ -123,12 +136,8 @@ internal object OpenPlaySession {
      * or runs its ADB access check ("adb-check") for features that need it.
      */
     fun openClassic(activity: Activity, page: String, category: String? = null) {
-        if (page == "adb-check") return handOff(activity, ACTION_ADB_CHECK)
-        val intent = Intent(activity, DiPlayActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            .putExtra("page", page)
-        if (category != null) intent.putExtra(EXTRA_SETTINGS_CATEGORY, category)
-        activity.startActivity(intent)
+        if (page == "adb-check") return handOff(activity, ACTION_ADB_CHECK, category)
+        activity.startActivity(classicIntent(activity, page, category))
     }
 
     /** What DiPlayActivity does on its first launch: start the car hotspot when that is set up. */
@@ -152,12 +161,14 @@ internal object OpenPlaySession {
         com.shilapi.xcertplay.telecom.PhoneAudioRoute.attach(app)
     }
 
-    fun handOff(activity: Activity, action: String) {
+    /**
+     * Runs one of DiPlay's flows (connect with its car-hotspot and setup dialogs, the iPhone
+     * picker, the ADB check). Its dialogs open over the matching Settings page, never DiPlay's
+     * old home; closing that page returns to OpenPlay.
+     */
+    fun handOff(activity: Activity, action: String, category: String? = null) {
         activity.startActivity(
-            Intent(activity, DiPlayActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                .putExtra("page", "home")
-                .putExtra(EXTRA_ACTION, action),
+            classicIntent(activity, "settings", category ?: "connection").putExtra(EXTRA_ACTION, action),
         )
     }
 

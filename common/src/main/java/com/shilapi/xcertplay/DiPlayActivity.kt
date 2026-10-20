@@ -178,6 +178,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     private val windowLearningPresses = WheelKeyPresses()
     private val endWindowLearning = Runnable { cancelKeyLearning() }
     private var page = "home"
+    /** Opened on OpenPlay's behalf: the old home is never shown; leaving a page returns to OpenPlay. */
+    private var openPlayFrontEnd = false
     internal var ambientSupportCheck: (Context) -> java.util.concurrent.CompletableFuture<Boolean> = AmbientMusicController::checkSupport
     internal var carRhythmSupportCheck: (Context) -> java.util.concurrent.CompletableFuture<Boolean> =
         com.shilapi.xcertplay.hud.BydCarMusicRhythm::checkSupport
@@ -404,6 +406,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             ?.let { runCatching { SettingsCategory.valueOf(it) }.getOrNull() }
         setupStep = savedInstanceState?.getInt("setup_step") ?: SetupGuide.STEP_CAR
         setupFromSettings = savedInstanceState?.getBoolean("setup_from_settings") ?: false
+        openPlayFrontEnd = savedInstanceState?.getBoolean("openplay_front_end")
+            ?: intent.getBooleanExtra(com.shilapi.xcertplay.openplay.OpenPlaySession.EXTRA_FRONT_END, false)
         page = savedInstanceState?.getString("page") ?: intent.getStringExtra("page")
             ?: if (setupError == null && SetupGuide.shouldOpenOnLaunch(SetupGuide.seen(this),
                     DiPlayPreferences.phoneAddress(this) != null)) "setup" else "home"
@@ -429,6 +433,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent); setIntent(intent)
         connectionSettingsReturnCategory = null
+        if (intent.getBooleanExtra(com.shilapi.xcertplay.openplay.OpenPlaySession.EXTRA_FRONT_END, false)) openPlayFrontEnd = true
         // CarPlay runs in its own task, so the launcher icon resumes this one. Settings opened from
         // CarPlay carry a "page" extra, which isLauncherIntent rejects.
         if (isLauncherIntent(intent) && CarPlayBackgroundSession.hasSession()) {
@@ -479,6 +484,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         outState.putBoolean("byd_vehicle_advanced", bydVehicleAdvancedExpanded)
         outState.putInt("setup_step", setupStep)
         outState.putBoolean("setup_from_settings", setupFromSettings)
+        outState.putBoolean("openplay_front_end", openPlayFrontEnd)
         super.onSaveInstanceState(outState)
     }
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -660,7 +666,18 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
 
     private fun render() = render(appearanceOnly = false)
 
+    private fun returnToOpenPlay() {
+        if (isFinishing) return
+        startActivity(Intent(this, com.shilapi.xcertplay.openplay.OpenPlayActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT).putExtra("page", "home"))
+        finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+    }
+
     private fun render(appearanceOnly: Boolean, preferredFocusTag: Any? = null) {
+        // OpenPlay is the home screen: for OpenPlay, going "home" here means going back to it.
+        if (openPlayFrontEnd && page == "home") { returnToOpenPlay(); return }
         enforceInterfaceSize()
         refreshAppearance()
         applyWindowAppearance()
@@ -5694,7 +5711,9 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
 
     private fun handleWirelessRecovery() {
         if (page != "wireless-recovery") return
-        page = "home"; render()
+        // For OpenPlay the question opens over Connection settings, not DiPlay's old home.
+        if (openPlayFrontEnd) { page = "settings"; settingsCategory = SettingsCategory.CONNECTION } else page = "home"
+        render()
         confirmWirelessReset()
     }
 
