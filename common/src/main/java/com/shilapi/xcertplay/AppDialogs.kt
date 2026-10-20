@@ -20,6 +20,11 @@ internal fun Context.appDialogTheme(): Int = if (
 
 internal fun Context.appDialogContext(): Context = ContextThemeWrapper(this, appDialogTheme())
 
-internal fun Context.appDialogBuilder(): AlertDialog.Builder = AlertDialog.Builder(this, appDialogTheme())
+/** Dialogs in OpenPlay's style: its palette from the theme, and Outfit set on their text when shown. */
+internal fun Context.appDialogBuilder(): AlertDialog.Builder = object : AlertDialog.Builder(this, appDialogTheme()) {
+    override fun create(): AlertDialog = super.create().also { dialog ->
+        dialog.setOnShowListener { DiPlayType.applyTree(dialog.window?.decorView) }
+    }
+}
 
 internal fun Context.appDialog(): Dialog = Dialog(this, appDialogTheme())

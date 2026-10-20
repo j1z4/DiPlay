@@ -23,8 +23,8 @@ import androidx.compose.ui.unit.sp
 import com.shilapi.xcertplay.host.R
 
 /*
- * OpenPlay design tokens, ported one for one from design/ui-library/tokens.css.
- * Debug builds only: this preview sits beside the shipping UI and changes nothing in it.
+ * OpenPlay design tokens, ported one for one from design/ui-library/tokens.css. The classic
+ * screens' DiPlayPalette uses the same values.
  */
 
 @Immutable
@@ -65,7 +65,7 @@ data class OpenPlayColors(
 
 /** Day palette, as `[data-dp-theme="day"]`. */
 val DayColors = OpenPlayColors(
-    brandStrong = Color(0xFF0B8F3A),
+    brandStrong = Color(0xFF0B7A33),
     brandGlow = Color(0x2E0E9E3E),
     bg = Color(0xFFEEF1F5),
     bgRaised = Color(0xFFFFFFFF),
@@ -85,7 +85,7 @@ val DayColors = OpenPlayColors(
     focusFill = Color(0xFF111418),
     focusText = Color(0xFFFFFFFF),
     focusValue = Color(0xFFAAB2BF),
-    focusRing = Color(0xFF0B8F3A),
+    focusRing = Color(0xFF0B7A33),
     trackOff = Color(0xFFC3CAD4),
     warning = Color(0xFF8A4B00),
     danger = Color(0xFFC62F35),

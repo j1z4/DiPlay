@@ -17,6 +17,7 @@ import android.widget.Switch
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 import com.shilapi.xcertplay.airplay.CarPlayDisplayScale
+import com.shilapi.xcertplay.DiPlayType
 import com.shilapi.xcertplay.host.R
 import kotlin.math.roundToInt
 
@@ -24,10 +25,10 @@ object SettingsWidgets {
 
     private fun TextView.applyTextStyle(context: Context, theme: SettingsTheme, bold: Boolean = false) {
         if (theme.isOverlay) {
-            typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            DiPlayType.apply(this, if (bold) DiPlayType.SEMIBOLD else DiPlayType.REGULAR)
             includeFontPadding = false
         } else {
-            typeface = Typeface.create(if (bold) "sans-serif-medium" else "sans-serif", Typeface.NORMAL)
+            DiPlayType.apply(this, if (bold) DiPlayType.MEDIUM else DiPlayType.REGULAR)
             gravity = Gravity.CENTER_VERTICAL
             setLineSpacing(theme.dp(context, 3).toFloat(), 1f)
         }

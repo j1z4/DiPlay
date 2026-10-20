@@ -24,7 +24,7 @@ internal class DiPlayButton(context: Context) : Button(context) {
     init {
         isAllCaps = false
         stateListAnimator = null
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        DiPlayType.apply(this, DiPlayType.MEDIUM)
     }
 
     /** [overlay] picks the in-car menu colours instead of the app chrome colours. */

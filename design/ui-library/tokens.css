@@ -112,7 +112,7 @@
 
 /* Day mode: the app follows the car's day/night signal (CarPlayNightMode.kt). */
 [data-dp-theme="day"] {
-  --dp-brand-strong: #0b8f3a;
+  --dp-brand-strong: #0b7a33;
   --dp-brand-glow: rgba(14, 158, 62, 0.18);
   --dp-bg: #eef1f5;
   --dp-bg-raised: #ffffff;
@@ -135,11 +135,11 @@
   --dp-focus-value: #aab2bf;
   --dp-focus-shadow: 0 18px 40px -16px rgba(20, 30, 45, 0.45);
   /* Aliases resolve where they are declared, so day mode restates them. */
-  --dp-focus-ring: #0b8f3a;
-  --dp-accent: #0b8f3a;
-  --dp-success: #0b8f3a;
+  --dp-focus-ring: #0b7a33;
+  --dp-accent: #0b7a33;
+  --dp-success: #0b7a33;
   --dp-on-accent: #ffffff;
-  --dp-accent-track: #0b8f3a;
+  --dp-accent-track: #0b7a33;
   --dp-track-off: #c3cad4;
   --dp-warning: #8a4b00;
   --dp-danger: #c62f35;

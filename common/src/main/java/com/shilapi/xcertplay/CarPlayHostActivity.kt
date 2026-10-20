@@ -2792,12 +2792,11 @@ class CarPlayHostActivity : ComponentActivity() {
         minOf(dp(MAX_SETTINGS_MENU_WIDTH_DP), (availableWidth - dp(SWIPE_PANEL_MARGIN_DP * 2)).coerceAtLeast(1))
 
     private fun swipeMenuChrome(topCornersOnly: Boolean = false, bottomCornersOnly: Boolean = false): GradientDrawable {
-        val base = ColorUtils.blendARGB(MENU_BACKGROUND, overlayPalette.surface, if (appNight) 0.48f else 0.38f)
-        val highlight = ColorUtils.blendARGB(base, Color.WHITE, if (appNight) 0.10f else 0.28f)
+        // OpenPlay's slate card, the same as its Home device card.
         val radius = dp(SWIPE_PANEL_RADIUS_DP).toFloat()
         val top = if (bottomCornersOnly) 0f else radius
         val bottom = if (topCornersOnly) 0f else radius
-        return GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(highlight, base)).apply {
+        return GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(overlayPalette.cardTop, overlayPalette.cardBottom)).apply {
             cornerRadii = floatArrayOf(top, top, top, top, bottom, bottom, bottom, bottom)
             setStroke(dp(SWIPE_BORDER_WIDTH_DP), ColorUtils.blendARGB(overlayPalette.outline,
                 Color.WHITE, if (appNight) 0.12f else 0.30f))
@@ -4647,7 +4646,7 @@ class CarPlayHostActivity : ComponentActivity() {
         this.text = text
         textSize = sizeSp
         setTextColor(color)
-        typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        DiPlayType.apply(this, if (bold) DiPlayType.SEMIBOLD else DiPlayType.REGULAR)
         includeFontPadding = false
     }
 

@@ -1141,19 +1141,16 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 null,
             )
             setPadding(dp(8), 0, dp(12), 0)
+            // OpenPlay: the current category is a white fill with dark text; no side bar.
             addView(View(this@DiPlayActivity).apply {
-                background = GradientDrawable().apply {
-                    setColor(if (selected) ACCENT else Color.TRANSPARENT)
-                    cornerRadius = dp(2).toFloat()
-                }
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LinearLayout.LayoutParams(dp(4), dp(34)).apply { marginEnd = dp(10) })
             addView(ImageView(this@DiPlayActivity).apply {
                 setImageResource(settingsCategoryIcon(category))
-                imageTintList = ColorStateList.valueOf(if (selected) ACCENT else TEXT)
+                imageTintList = ColorStateList.valueOf(if (selected) palette.onRailSelected else TEXT)
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(12) })
-            addView(label(title, 16, if (selected) ACCENT else TEXT, true,
+            addView(label(title, 16, if (selected) palette.onRailSelected else TEXT, true,
                 centreGlyphs = usesChineseGlyphAlignment(resources.configuration.locales[0].language, title)),
                 LinearLayout.LayoutParams(0, -1, 1f))
             setOnClickListener {
@@ -5251,7 +5248,9 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
 
     private fun reconnectBar(): View = row().apply {
         gravity = Gravity.CENTER_VERTICAL
-        background = rounded(RAIL_SELECTED, RAIL_SELECTED_BORDER)
+        // OpenPlay's banner: a faint wash of the accent with an accent edge.
+        background = rounded(androidx.core.graphics.ColorUtils.blendARGB(SURFACE, ACCENT, 0.13f),
+            androidx.core.graphics.ColorUtils.blendARGB(SURFACE, ACCENT, 0.3f))
         setPadding(dp(20), dp(10), dp(12), dp(10))
         addView(label(getString(R.string.settings_reconnect_pending), 16, TEXT), LinearLayout.LayoutParams(0, -2, 1f))
         addView(button(getString(R.string.settings_reconnect_now), true) {
@@ -6374,7 +6373,14 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         }
         parent.addView(button, matchButton(0, 60)); parent.addView(space(12))
     }
-    private fun card() = column().apply { background = rounded(SURFACE, BORDER); setPadding(dp(24), dp(24), dp(24), dp(24)) }
+    // OpenPlay's slate card: a soft top-to-bottom gradient with a hairline edge.
+    private fun card() = column().apply {
+        background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(palette.cardTop, palette.cardBottom)).apply {
+            cornerRadius = layoutCornerRadius() * 1.35f
+            setStroke(dp(1), BORDER)
+        }
+        setPadding(dp(24), dp(24), dp(24), dp(24))
+    }
     private fun column() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(-1, -2) }
     private fun row() = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutParams = LinearLayout.LayoutParams(-1, -2) }
     private class SettingsSearchEditText(context: android.content.Context) : EditText(context) {
@@ -6445,7 +6451,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     private fun label(value: String, size: Int, color: Int, bold: Boolean = false, centreGlyphs: Boolean = false) =
         (if (centreGlyphs) HeaderTitleView(this) else TextView(this)).apply {
         text = value; textSize = size.toFloat(); setTextColor(color); gravity = Gravity.CENTER_VERTICAL
-        typeface = if (bold) Typeface.create("sans-serif-medium", Typeface.NORMAL) else Typeface.create("sans-serif", Typeface.NORMAL)
+        DiPlayType.apply(this, if (bold) DiPlayType.MEDIUM else DiPlayType.REGULAR)
         setLineSpacing(dp(3).toFloat(), 1f)
     }
     private fun headerIconSize(compact: Boolean) = dp(if (compact) 20 else 24)
@@ -6492,9 +6498,13 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     )
 
     private fun button(title: String, primary: Boolean, click: () -> Unit) = SettingButton(this, MUTED, ACCENT).apply {
-        isAllCaps = false; textSize = 18f; setTextColor(if (primary) ON_ACCENT else TEXT)
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-        background = android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(RIPPLE), buttonShape(if (primary) ACCENT else BUTTON, if (primary) ACCENT else BORDER), null)
+        isAllCaps = false; textSize = 18f
+        // OpenPlay: primary is white on black; any focused button or row inverts to the focus fill.
+        setTextColor(focusText(if (primary) palette.onPrimary else TEXT))
+        DiPlayType.apply(this, DiPlayType.MEDIUM)
+        val fill = if (primary) palette.primaryFill else BUTTON
+        val stroke = if (primary) palette.primaryFill else BORDER
+        background = android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(RIPPLE), focusFillShape(buttonShape(fill, stroke)), null)
         setPadding(dp(16), 0, dp(16), 0); minHeight = dp(56); stateListAnimator = null
         compoundDrawablePadding = dp(12)
         foreground = buttonFocusRing()
@@ -6502,10 +6512,23 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         searchIndexSink?.add(title.substringBefore(VALUE_SEPARATOR))
         setOnClickListener { click() }
         doOnLayout {
-            val shape = buttonShape(if (primary) ACCENT else BUTTON, if (primary) ACCENT else BORDER, height)
-            background = android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(RIPPLE), shape, null)
+            val shape = buttonShape(fill, stroke, height)
+            background = android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(RIPPLE), focusFillShape(shape), null)
             foreground = focusRing((shape.cornerRadius / resources.displayMetrics.density).roundToInt())
         }
+    }
+
+    /** [color] normally, OpenPlay's focus text when focused. */
+    private fun focusText(color: Int) = ColorStateList(
+        arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()),
+        intArrayOf(palette.onFocus, color),
+    )
+
+    /** [shape] normally; the same shape in OpenPlay's focus fill when focused. */
+    private fun focusFillShape(shape: GradientDrawable) = android.graphics.drawable.StateListDrawable().apply {
+        addState(intArrayOf(android.R.attr.state_focused), (shape.constantState?.newDrawable()?.mutate() as? GradientDrawable ?: GradientDrawable())
+            .apply { setColor(palette.focusFill); setStroke(dp(1), palette.focusFill) })
+        addState(intArrayOf(), shape)
     }
 
     private fun iconButton(icon: Int, description: String, click: () -> Unit) = ImageButton(this).apply {
