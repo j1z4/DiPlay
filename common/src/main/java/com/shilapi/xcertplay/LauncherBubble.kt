@@ -56,7 +56,7 @@ internal object LauncherBubble {
     /** The icon the launcher would show for this app. */
     private fun appIcon(context: Context): Drawable? = runCatching {
         context.packageManager.getApplicationIcon(context.packageName)
-    }.getOrNull() ?: ContextCompat.getDrawable(context, R.drawable.ic_carplay)
+    }.getOrNull() ?: ContextCompat.getDrawable(context, R.drawable.ic_openplay)
 
     private val main = Handler(Looper.getMainLooper())
     private var appContext: Context? = null

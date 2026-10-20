@@ -819,8 +819,9 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         gravity = Gravity.CENTER_VERTICAL
         val logoSize = dp(if (compact) 30 else 36)
         addView(ImageView(this@DiPlayActivity).apply {
-            setImageResource(R.drawable.ic_carplay)
-            contentDescription = getString(R.string.carplay)
+            setImageResource(R.drawable.ic_openplay_mark)
+            // The OpenPlay title beside it names it; the mark is decoration.
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }, LinearLayout.LayoutParams(logoSize, logoSize))
         addView(label(getString(R.string.diplay), if (compact) 20 else 26, TEXT, true,
             centreGlyphs = resources.configuration.locales[0].language != "zh").apply {
@@ -1010,7 +1011,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         card.addView(disconnectButton, matchButton(if (compact) CONTROL_GAP_DP else 16, if (compact) 46 else 56))
         val right = column().apply { gravity = Gravity.CENTER_HORIZONTAL }
         val logo = ImageView(this).apply {
-            setImageResource(R.drawable.ic_carplay)
+            setImageResource(R.drawable.ic_openplay_mark)
             contentDescription = getString(R.string.carplay_icon)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
@@ -2146,7 +2147,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         // A launcher shortcut. Some head units' launchers list only their own cards, so a normally
         // installed app never appears on the home screen; this app draws its own way back instead (#650).
         filteredSection(content, SettingsSection.LAUNCHER_BUBBLE,
-            getString(R.string.settings_launcher_bubble), R.drawable.ic_carplay) { card ->
+            getString(R.string.settings_launcher_bubble), R.drawable.ic_openplay) { card ->
             toggle(card, getString(R.string.settings_launcher_bubble),
                 getString(R.string.settings_launcher_bubble_description),
                 AirPlayPersistence.loadLauncherBubble(this)) { enabled ->

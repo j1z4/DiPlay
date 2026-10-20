@@ -1952,14 +1952,14 @@ class CarPlayHostActivity : ComponentActivity() {
             gravity = Gravity.CENTER
         }
         val icon = ImageView(this).apply {
-            setImageResource(R.drawable.ic_carplay)
+            setImageResource(R.drawable.ic_openplay_mark)
             contentDescription = getString(R.string.carplay)
         }
         panel.addView(icon, LinearLayout.LayoutParams(dp(88), dp(88)))
         val title = TextView(this).apply {
             text = getString(R.string.diplay)
             gravity = Gravity.CENTER
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            DiPlayType.apply(this, DiPlayType.SEMIBOLD)
         }
         panel.addView(title)
         val stage = TextView(this).apply {
